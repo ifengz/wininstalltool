@@ -2,7 +2,9 @@ use std::fs;
 
 #[test]
 fn main_content_panels_keep_right_inset() {
-    let ui = fs::read_to_string("ui/main.slint").expect("main Slint UI exists");
+    let ui = fs::read_to_string("ui/main.slint")
+        .expect("main Slint UI exists")
+        .replace("\r\n", "\n");
     let right_inset_count = ui.matches("padding-right: 28px;").count();
     let clipping_panel_count = ui.matches("clip: true;").count();
     let stretching_clipped_panel_count = ui
