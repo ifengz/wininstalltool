@@ -438,6 +438,862 @@
         ]
       },
       "notes": "Silent switch /S comes from third-party deployment guide and requires local confirmation."
+    },
+    {
+      "id": "ziniao_browser",
+      "name": "紫鸟超级浏览器",
+      "category": "browser",
+      "homepage_url": "https://www.ziniao.com/",
+      "enabled_by_default": false,
+      "verification_status": "candidate_low",
+      "source": {
+        "type": "manual",
+        "url": "https://www.ziniao.com/"
+      },
+      "install": {
+        "method": "manual",
+        "requires_admin": true,
+        "supports_custom_path": false,
+        "fallback_notes": "该软件尚未确认可用的 winget 包或官方直链静默参数；V1 只展示和记录，不能自动静默安装。"
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "紫鸟"
+          },
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "Ziniao"
+          }
+        ]
+      },
+      "notes": "需要在 Windows 实机确认下载来源、静默参数和检测规则后才能默认启用。"
+    },
+    {
+      "id": "wechat_input",
+      "name": "微信输入法",
+      "category": "input_method",
+      "homepage_url": "https://z.weixin.qq.com/",
+      "enabled_by_default": false,
+      "verification_status": "candidate_medium",
+      "source": {
+        "type": "winget",
+        "package_id": "Tencent.WeType"
+      },
+      "install": {
+        "method": "winget",
+        "requires_admin": true,
+        "supports_custom_path": false,
+        "args": [
+          "install",
+          "--exact",
+          "--id",
+          "Tencent.WeType",
+          "--silent",
+          "--accept-package-agreements",
+          "--accept-source-agreements",
+          "--disable-interactivity",
+          "--no-upgrade"
+        ],
+        "fallback_notes": "Winget 静默参数仍需在目标 Win10/Win11 机器实测；如安装器弹窗则改为本地缓存或人工安装。"
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "微信输入法"
+          },
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "WeType"
+          }
+        ]
+      }
+    },
+    {
+      "id": "sogou_input",
+      "name": "搜狗输入法",
+      "category": "input_method",
+      "homepage_url": "https://pinyin.sogou.com/",
+      "enabled_by_default": false,
+      "verification_status": "candidate_medium",
+      "source": {
+        "type": "winget",
+        "package_id": "Sogou.SogouInput"
+      },
+      "install": {
+        "method": "winget",
+        "requires_admin": true,
+        "supports_custom_path": false,
+        "args": [
+          "install",
+          "--exact",
+          "--id",
+          "Sogou.SogouInput",
+          "--silent",
+          "--accept-package-agreements",
+          "--accept-source-agreements",
+          "--disable-interactivity",
+          "--no-upgrade"
+        ],
+        "fallback_notes": "Winget 静默参数仍需在目标 Win10/Win11 机器实测；如安装器弹窗则改为本地缓存或人工安装。"
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "搜狗输入法"
+          },
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "Sogou"
+          }
+        ]
+      }
+    },
+    {
+      "id": "hubstudio",
+      "name": "Hubstudio",
+      "category": "browser",
+      "homepage_url": "https://www.hubstudio.cn/",
+      "enabled_by_default": false,
+      "verification_status": "candidate_low",
+      "source": {
+        "type": "manual",
+        "url": "https://www.hubstudio.cn/"
+      },
+      "install": {
+        "method": "manual",
+        "requires_admin": true,
+        "supports_custom_path": false,
+        "fallback_notes": "该软件尚未确认可用的 winget 包或官方直链静默参数；V1 只展示和记录，不能自动静默安装。"
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "Hubstudio"
+          },
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "HubStudio"
+          }
+        ]
+      },
+      "notes": "需要在 Windows 实机确认下载来源、静默参数和检测规则后才能默认启用。"
+    },
+    {
+      "id": "sunlogin",
+      "name": "向日葵远程",
+      "category": "remote_control",
+      "homepage_url": "https://sunlogin.oray.com/",
+      "enabled_by_default": false,
+      "verification_status": "candidate_medium",
+      "source": {
+        "type": "winget",
+        "package_id": "Oray.SunloginClient"
+      },
+      "install": {
+        "method": "winget",
+        "requires_admin": true,
+        "supports_custom_path": false,
+        "args": [
+          "install",
+          "--exact",
+          "--id",
+          "Oray.SunloginClient",
+          "--silent",
+          "--accept-package-agreements",
+          "--accept-source-agreements",
+          "--disable-interactivity",
+          "--no-upgrade"
+        ],
+        "fallback_notes": "Winget 静默参数仍需在目标 Win10/Win11 机器实测；如安装器弹窗则改为本地缓存或人工安装。"
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "向日葵"
+          },
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "Sunlogin"
+          }
+        ]
+      }
+    },
+    {
+      "id": "todesk",
+      "name": "ToDesk",
+      "category": "remote_control",
+      "homepage_url": "https://www.todesk.com/",
+      "enabled_by_default": false,
+      "verification_status": "candidate_medium",
+      "source": {
+        "type": "winget",
+        "package_id": "ToDesk.ToDesk"
+      },
+      "install": {
+        "method": "winget",
+        "requires_admin": true,
+        "supports_custom_path": false,
+        "args": [
+          "install",
+          "--exact",
+          "--id",
+          "ToDesk.ToDesk",
+          "--silent",
+          "--accept-package-agreements",
+          "--accept-source-agreements",
+          "--disable-interactivity",
+          "--no-upgrade"
+        ],
+        "fallback_notes": "Winget 静默参数仍需在目标 Win10/Win11 机器实测；如安装器弹窗则改为本地缓存或人工安装。"
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "ToDesk"
+          }
+        ]
+      }
+    },
+    {
+      "id": "uu_remote",
+      "name": "UU 远程",
+      "category": "remote_control",
+      "homepage_url": "https://uuyc.163.com/",
+      "enabled_by_default": false,
+      "verification_status": "candidate_medium",
+      "source": {
+        "type": "winget",
+        "package_id": "NetEase.UURemote"
+      },
+      "install": {
+        "method": "winget",
+        "requires_admin": true,
+        "supports_custom_path": false,
+        "args": [
+          "install",
+          "--exact",
+          "--id",
+          "NetEase.UURemote",
+          "--silent",
+          "--accept-package-agreements",
+          "--accept-source-agreements",
+          "--disable-interactivity",
+          "--no-upgrade"
+        ],
+        "fallback_notes": "Winget 清单已确认 NetEase.UURemote；静默行为仍需在目标 Win10/Win11 机器实测。"
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "UU远程"
+          },
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "UU 远程"
+          }
+        ]
+      },
+      "notes": "Winget 清单已确认 NetEase.UURemote；静默行为仍需在目标 Win10/Win11 机器实测。"
+    },
+    {
+      "id": "quark_netdisk",
+      "name": "夸克网盘",
+      "category": "cloud_drive",
+      "homepage_url": "https://pan.quark.cn/",
+      "enabled_by_default": false,
+      "verification_status": "candidate_medium",
+      "source": {
+        "type": "winget",
+        "package_id": "Alibaba.QuarkCloudDrive"
+      },
+      "install": {
+        "method": "winget",
+        "requires_admin": true,
+        "supports_custom_path": false,
+        "args": [
+          "install",
+          "--exact",
+          "--id",
+          "Alibaba.QuarkCloudDrive",
+          "--silent",
+          "--accept-package-agreements",
+          "--accept-source-agreements",
+          "--disable-interactivity",
+          "--no-upgrade"
+        ],
+        "fallback_notes": "Winget 清单已确认 Alibaba.QuarkCloudDrive；静默行为仍需在目标 Win10/Win11 机器实测。"
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "夸克网盘"
+          },
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "Quark"
+          }
+        ]
+      },
+      "notes": "Winget 清单已确认 Alibaba.QuarkCloudDrive；静默行为仍需在目标 Win10/Win11 机器实测。"
+    },
+    {
+      "id": "baidu_netdisk",
+      "name": "百度网盘",
+      "category": "cloud_drive",
+      "homepage_url": "https://pan.baidu.com/download",
+      "enabled_by_default": false,
+      "verification_status": "candidate_medium",
+      "source": {
+        "type": "winget",
+        "package_id": "Baidu.BaiduNetdisk"
+      },
+      "install": {
+        "method": "winget",
+        "requires_admin": true,
+        "supports_custom_path": false,
+        "args": [
+          "install",
+          "--exact",
+          "--id",
+          "Baidu.BaiduNetdisk",
+          "--silent",
+          "--accept-package-agreements",
+          "--accept-source-agreements",
+          "--disable-interactivity",
+          "--no-upgrade"
+        ],
+        "fallback_notes": "Winget 静默参数仍需在目标 Win10/Win11 机器实测；如安装器弹窗则改为本地缓存或人工安装。"
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "百度网盘"
+          },
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "BaiduNetdisk"
+          }
+        ]
+      }
+    },
+    {
+      "id": "netease_cloud_music",
+      "name": "网易云音乐",
+      "category": "music",
+      "homepage_url": "https://music.163.com/#/download",
+      "enabled_by_default": false,
+      "verification_status": "candidate_medium",
+      "source": {
+        "type": "winget",
+        "package_id": "NetEase.CloudMusic"
+      },
+      "install": {
+        "method": "winget",
+        "requires_admin": true,
+        "supports_custom_path": false,
+        "args": [
+          "install",
+          "--exact",
+          "--id",
+          "NetEase.CloudMusic",
+          "--silent",
+          "--accept-package-agreements",
+          "--accept-source-agreements",
+          "--disable-interactivity",
+          "--no-upgrade"
+        ],
+        "fallback_notes": "Winget 静默参数仍需在目标 Win10/Win11 机器实测；如安装器弹窗则改为本地缓存或人工安装。"
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "网易云音乐"
+          },
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "NetEase CloudMusic"
+          }
+        ]
+      }
+    },
+    {
+      "id": "qq_music",
+      "name": "QQ 音乐",
+      "category": "music",
+      "homepage_url": "https://y.qq.com/download/download.html",
+      "enabled_by_default": false,
+      "verification_status": "candidate_medium",
+      "source": {
+        "type": "winget",
+        "package_id": "Tencent.QQMusic"
+      },
+      "install": {
+        "method": "winget",
+        "requires_admin": true,
+        "supports_custom_path": false,
+        "args": [
+          "install",
+          "--exact",
+          "--id",
+          "Tencent.QQMusic",
+          "--silent",
+          "--accept-package-agreements",
+          "--accept-source-agreements",
+          "--disable-interactivity",
+          "--no-upgrade"
+        ],
+        "fallback_notes": "Winget 静默参数仍需在目标 Win10/Win11 机器实测；如安装器弹窗则改为本地缓存或人工安装。"
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "QQ音乐"
+          },
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "QQ Music"
+          }
+        ]
+      }
+    },
+    {
+      "id": "codex_desktop",
+      "name": "Codex 桌面客户端",
+      "category": "ai_tool",
+      "homepage_url": "https://github.com/openai/codex",
+      "enabled_by_default": false,
+      "verification_status": "candidate_medium",
+      "source": {
+        "type": "winget",
+        "package_id": "OpenAI.Codex"
+      },
+      "install": {
+        "method": "winget",
+        "requires_admin": false,
+        "supports_custom_path": false,
+        "args": [
+          "install",
+          "--exact",
+          "--id",
+          "OpenAI.Codex",
+          "--silent",
+          "--accept-package-agreements",
+          "--accept-source-agreements",
+          "--disable-interactivity",
+          "--no-upgrade"
+        ],
+        "fallback_notes": "Winget 清单已确认 OpenAI.Codex；该包跟随 OpenAI Codex Windows 发布，静默行为仍需实机验证。"
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "Codex"
+          },
+          {
+            "type": "path_exists",
+            "value": "%LocalAppData%\\Programs\\Codex\\Codex.exe"
+          }
+        ]
+      },
+      "notes": "Winget 清单已确认 OpenAI.Codex；该包跟随 OpenAI Codex Windows 发布，静默行为仍需实机验证。"
+    },
+    {
+      "id": "claude_code_desktop",
+      "name": "Claude Code 桌面客户端",
+      "category": "ai_tool",
+      "homepage_url": "https://claude.ai/download",
+      "enabled_by_default": false,
+      "verification_status": "candidate_medium",
+      "source": {
+        "type": "winget",
+        "package_id": "Anthropic.ClaudeCode"
+      },
+      "install": {
+        "method": "winget",
+        "requires_admin": false,
+        "supports_custom_path": false,
+        "args": [
+          "install",
+          "--exact",
+          "--id",
+          "Anthropic.ClaudeCode",
+          "--silent",
+          "--accept-package-agreements",
+          "--accept-source-agreements",
+          "--disable-interactivity",
+          "--no-upgrade"
+        ],
+        "fallback_notes": "Winget 清单已确认 Anthropic.ClaudeCode；该包为 portable 类型，安装/检测行为仍需实机验证。"
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "Claude"
+          },
+          {
+            "type": "path_exists",
+            "value": "%LocalAppData%\\Programs\\Claude\\Claude.exe"
+          }
+        ]
+      },
+      "notes": "Winget 清单已确认 Anthropic.ClaudeCode；该包为 portable 类型，安装/检测行为仍需实机验证。"
+    },
+    {
+      "id": "zcode_client",
+      "name": "Zcode 客户端",
+      "category": "ai_tool",
+      "homepage_url": "https://z.ai/",
+      "enabled_by_default": false,
+      "verification_status": "candidate_medium",
+      "source": {
+        "type": "winget",
+        "package_id": "ZhipuAI.ZCode"
+      },
+      "install": {
+        "method": "winget",
+        "requires_admin": false,
+        "supports_custom_path": false,
+        "args": [
+          "install",
+          "--exact",
+          "--id",
+          "ZhipuAI.ZCode",
+          "--silent",
+          "--accept-package-agreements",
+          "--accept-source-agreements",
+          "--disable-interactivity",
+          "--no-upgrade"
+        ],
+        "fallback_notes": "Winget 清单已确认 ZhipuAI.ZCode；静默行为仍需在目标 Win10/Win11 机器实测。"
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "Zcode"
+          },
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "Z Code"
+          }
+        ]
+      },
+      "notes": "Winget 清单已确认 ZhipuAI.ZCode；静默行为仍需在目标 Win10/Win11 机器实测。"
+    },
+    {
+      "id": "qq",
+      "name": "QQ",
+      "category": "messaging",
+      "homepage_url": "https://im.qq.com/pcqq/index.shtml",
+      "enabled_by_default": false,
+      "verification_status": "candidate_low",
+      "source": {
+        "type": "winget",
+        "package_id": "Tencent.QQ"
+      },
+      "install": {
+        "method": "winget",
+        "requires_admin": true,
+        "supports_custom_path": false,
+        "args": [
+          "install",
+          "--exact",
+          "--id",
+          "Tencent.QQ",
+          "--silent",
+          "--accept-package-agreements",
+          "--accept-source-agreements",
+          "--disable-interactivity",
+          "--no-upgrade"
+        ],
+        "fallback_notes": "Winget 静默参数仍需在目标 Win10/Win11 机器实测；如安装器弹窗则改为本地缓存或人工安装。"
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "QQ"
+          },
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "Tencent QQ"
+          }
+        ]
+      },
+      "notes": "QQ 历史上存在静默安装不稳定反馈，必须在目标机器实测后再默认启用。"
+    },
+    {
+      "id": "ente_auth",
+      "name": "Ente Auth",
+      "category": "security",
+      "homepage_url": "https://ente.io/auth/",
+      "enabled_by_default": false,
+      "verification_status": "candidate_low",
+      "source": {
+        "type": "winget",
+        "package_id": "ente-io.auth-desktop"
+      },
+      "install": {
+        "method": "winget",
+        "requires_admin": false,
+        "supports_custom_path": false,
+        "args": [
+          "install",
+          "--exact",
+          "--id",
+          "ente-io.auth-desktop",
+          "--silent",
+          "--accept-package-agreements",
+          "--accept-source-agreements",
+          "--disable-interactivity",
+          "--no-upgrade"
+        ],
+        "fallback_notes": "Winget 静默参数仍需在目标 Win10/Win11 机器实测；如安装器弹窗则改为本地缓存或人工安装。"
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "Ente Auth"
+          },
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "ente auth"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cc_switch",
+      "name": "CC Switch",
+      "category": "developer_tool",
+      "homepage_url": "https://github.com/ifengz/cc-switch",
+      "enabled_by_default": false,
+      "verification_status": "candidate_low",
+      "source": {
+        "type": "manual",
+        "url": "https://github.com/ifengz/cc-switch"
+      },
+      "install": {
+        "method": "manual",
+        "requires_admin": false,
+        "supports_custom_path": false,
+        "fallback_notes": "该软件尚未确认可用的 winget 包或官方直链静默参数；V1 只展示和记录，不能自动静默安装。"
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "CC Switch"
+          },
+          {
+            "type": "path_exists",
+            "value": "%UserProfile%\\.cc-switch"
+          }
+        ]
+      },
+      "notes": "需要在 Windows 实机确认下载来源、静默参数和检测规则后才能默认启用。"
+    },
+    {
+      "id": "clash_verge",
+      "name": "Clash Verge",
+      "category": "network_tool",
+      "homepage_url": "https://github.com/clash-verge-rev/clash-verge-rev",
+      "enabled_by_default": false,
+      "verification_status": "candidate_medium",
+      "source": {
+        "type": "winget",
+        "package_id": "ClashVergeRev.ClashVergeRev"
+      },
+      "install": {
+        "method": "winget",
+        "requires_admin": false,
+        "supports_custom_path": false,
+        "args": [
+          "install",
+          "--exact",
+          "--id",
+          "ClashVergeRev.ClashVergeRev",
+          "--silent",
+          "--accept-package-agreements",
+          "--accept-source-agreements",
+          "--disable-interactivity",
+          "--no-upgrade"
+        ],
+        "fallback_notes": "Winget 静默参数仍需在目标 Win10/Win11 机器实测；如安装器弹窗则改为本地缓存或人工安装。"
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "Clash Verge"
+          },
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "Clash Verge Rev"
+          }
+        ]
+      }
+    },
+    {
+      "id": "browser_360_extreme",
+      "name": "360 极速浏览器",
+      "category": "browser",
+      "homepage_url": "https://browser.360.cn/ee/",
+      "enabled_by_default": false,
+      "verification_status": "candidate_medium",
+      "source": {
+        "type": "winget",
+        "package_id": "360.360Chrome"
+      },
+      "install": {
+        "method": "winget",
+        "requires_admin": true,
+        "supports_custom_path": false,
+        "args": [
+          "install",
+          "--exact",
+          "--id",
+          "360.360Chrome",
+          "--silent",
+          "--accept-package-agreements",
+          "--accept-source-agreements",
+          "--disable-interactivity",
+          "--no-upgrade"
+        ],
+        "fallback_notes": "Winget 清单已确认 360.360Chrome 且声明 --silent-install；仍需在目标机器确认无弹窗/无捆绑。"
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "360极速浏览器"
+          },
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "360 Chrome"
+          }
+        ]
+      },
+      "notes": "Winget 清单已确认 360.360Chrome 且声明 --silent-install；仍需在目标机器确认无弹窗/无捆绑。"
+    },
+    {
+      "id": "browser_360",
+      "name": "360 浏览器",
+      "category": "browser",
+      "homepage_url": "https://browser.360.cn/",
+      "enabled_by_default": false,
+      "verification_status": "candidate_medium",
+      "source": {
+        "type": "winget",
+        "package_id": "360.360SE"
+      },
+      "install": {
+        "method": "winget",
+        "requires_admin": true,
+        "supports_custom_path": false,
+        "args": [
+          "install",
+          "--exact",
+          "--id",
+          "360.360SE",
+          "--silent",
+          "--accept-package-agreements",
+          "--accept-source-agreements",
+          "--disable-interactivity",
+          "--no-upgrade"
+        ],
+        "fallback_notes": "Winget 清单已确认 360.360SE 且声明 --silent-install；仍需在目标机器确认无弹窗/无捆绑。"
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "360安全浏览器"
+          },
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "360浏览器"
+          }
+        ]
+      },
+      "notes": "Winget 清单已确认 360.360SE 且声明 --silent-install；仍需在目标机器确认无弹窗/无捆绑。"
+    },
+    {
+      "id": "pixpin",
+      "name": "PixPin 截图",
+      "category": "screenshot",
+      "homepage_url": "https://pixpinapp.com/",
+      "enabled_by_default": false,
+      "verification_status": "candidate_medium",
+      "source": {
+        "type": "winget",
+        "package_id": "PixPin.PixPin"
+      },
+      "install": {
+        "method": "winget",
+        "requires_admin": false,
+        "supports_custom_path": false,
+        "args": [
+          "install",
+          "--exact",
+          "--id",
+          "PixPin.PixPin",
+          "--silent",
+          "--accept-package-agreements",
+          "--accept-source-agreements",
+          "--disable-interactivity",
+          "--no-upgrade"
+        ],
+        "fallback_notes": "Winget 静默参数仍需在目标 Win10/Win11 机器实测；如安装器弹窗则改为本地缓存或人工安装。"
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "PixPin"
+          },
+          {
+            "type": "path_exists",
+            "value": "%LocalAppData%\\Programs\\PixPin\\PixPin.exe"
+          }
+        ]
+      }
     }
   ]
 }

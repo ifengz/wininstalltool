@@ -125,18 +125,36 @@ fn main_content_panels_keep_right_inset() {
         ui.contains("placeholder-text: \"分类；新名称会新增\""),
         "add-software form must keep a clear category field instead of exposing internal English defaults"
     );
-    let header_index = ui
-        .find("checked: root.all-visible-selected;")
-        .expect("selection header checkbox should exist");
     let row_loop_index = ui
         .find("for row[index] in root.app-rows")
         .expect("software row loop should exist");
-    let first_scroll_index = ui
-        .find("ScrollView {")
-        .expect("software table needs scrolling");
+    let fixed_header_index = ui
+        .find("// FixedTableHeaderGuard")
+        .expect("software table must mark its fixed header block");
+    let row_scroll_index = ui
+        .find("// TableRowsVerticalScrollGuard")
+        .expect("software rows must mark their vertical scroll block");
     assert!(
-        first_scroll_index < header_index && first_scroll_index < row_loop_index,
-        "table header and rows must live inside the same ScrollView so horizontal scrolling stays aligned"
+        fixed_header_index < row_scroll_index && row_scroll_index < row_loop_index,
+        "software table header must stay outside the vertical row ScrollView"
+    );
+    let category_loop_index = ui
+        .find("for category[index] in root.category-labels")
+        .expect("category tabs should exist");
+    let category_scroll_index = ui
+        .find("// CategoryTabsScrollGuard")
+        .expect("category tabs need a guarded scroll container");
+    assert!(
+        category_scroll_index < category_loop_index,
+        "category tabs must live inside a horizontal ScrollView so expanded categories do not overflow"
+    );
+    assert!(
+        ui.contains("width: root.width - 350px;")
+            && ui.contains(
+                "viewport-width: max(root.width - 350px, root.category-labels.length * 118px);"
+            )
+            && ui.contains("horizontal-scrollbar-policy: always-on;"),
+        "category tabs must have a bounded visible width and an explicit wider viewport for for-loop content"
     );
     for removed_sidebar_button in ["打开官网", "编辑当前软件", "删除当前软件"] {
         assert!(

@@ -319,15 +319,23 @@ export component AppWindow inherits Window {
                         Rectangle { horizontal-stretch: 1; }
                     }
 
-                    HorizontalLayout {
-                        height: 28px;
-                        spacing: 8px;
-                        for category[index] in root.category-labels: Button {
-                            text: category;
-                            height: 26px;
-                            clicked => { root.category-selected(index); }
+                    // CategoryTabsScrollGuard
+                    ScrollView {
+                        height: 30px;
+                        width: root.width - 350px;
+                        viewport-width: max(root.width - 350px, root.category-labels.length * 118px);
+                        horizontal-scrollbar-policy: always-on;
+
+                        HorizontalLayout {
+                            height: 28px;
+                            spacing: 8px;
+                            for category[index] in root.category-labels: Button {
+                                text: category;
+                                height: 26px;
+                                clicked => { root.category-selected(index); }
+                            }
+                            Rectangle { width: 1px; }
                         }
-                        Rectangle { horizontal-stretch: 1; }
                     }
 
                     Rectangle {
@@ -335,71 +343,77 @@ export component AppWindow inherits Window {
                         vertical-stretch: 1;
                         clip: true;
 
-                        ScrollView {
-                            vertical-stretch: 1;
+                        VerticalLayout {
+                            spacing: 0px;
 
-                            VerticalLayout {
-                                spacing: 0px;
+                            // FixedTableHeaderGuard
+                            Rectangle {
+                                height: 34px;
+                                background: #fafafa;
 
-                                Rectangle {
-                                    height: 34px;
-                                    background: #fafafa;
-
-                                    HorizontalLayout {
-                                        spacing: 0px;
-                                        CheckBox {
-                                            width: 44px;
-                                            height: 34px;
-                                            text: "";
-                                            checked: root.all-visible-selected;
-                                            toggled => { root.toggle-visible-selection(); }
-                                        }
-                                        Text { text: "软件"; width: 132px; font-size: 12px; color: #787774; vertical-alignment: center; }
-                                        Text { text: "作用"; width: 74px; font-size: 12px; color: #787774; vertical-alignment: center; }
-                                        Text { text: "来源"; horizontal-stretch: 2; font-size: 12px; color: #787774; vertical-alignment: center; }
-                                        Text { text: "验证"; width: 100px; font-size: 12px; color: #787774; vertical-alignment: center; }
-                                        Text { text: "安装"; width: 86px; font-size: 12px; color: #787774; vertical-alignment: center; }
-                                        Text { text: "路径"; width: 150px; font-size: 12px; color: #787774; vertical-alignment: center; }
-                                        Text { text: "操作"; width: 132px; font-size: 12px; color: #787774; vertical-alignment: center; horizontal-alignment: center; }
+                                HorizontalLayout {
+                                    spacing: 0px;
+                                    CheckBox {
+                                        width: 44px;
+                                        height: 34px;
+                                        text: "";
+                                        checked: root.all-visible-selected;
+                                        toggled => { root.toggle-visible-selection(); }
                                     }
+                                    Text { text: "软件"; width: 132px; font-size: 12px; color: #787774; vertical-alignment: center; }
+                                    Text { text: "作用"; width: 74px; font-size: 12px; color: #787774; vertical-alignment: center; }
+                                    Text { text: "来源"; horizontal-stretch: 2; font-size: 12px; color: #787774; vertical-alignment: center; }
+                                    Text { text: "验证"; width: 100px; font-size: 12px; color: #787774; vertical-alignment: center; }
+                                    Text { text: "安装"; width: 86px; font-size: 12px; color: #787774; vertical-alignment: center; }
+                                    Text { text: "路径"; width: 150px; font-size: 12px; color: #787774; vertical-alignment: center; }
+                                    Text { text: "操作"; width: 132px; font-size: 12px; color: #787774; vertical-alignment: center; horizontal-alignment: center; }
                                 }
+                            }
 
-                                for row[index] in root.app-rows: Rectangle {
-                                    height: 32px;
-                                    background: row_hover.has-hover || root.current-row == index ? #f3f3f1 : #ffffff;
-                                    clip: true;
+                            // TableRowsVerticalScrollGuard
+                            ScrollView {
+                                vertical-stretch: 1;
 
-                                    row_hover := TouchArea {
-                                        width: parent.width;
-                                        height: parent.height;
-                                        clicked => { root.current-row = index; }
-                                    }
+                                VerticalLayout {
+                                    spacing: 0px;
 
-                                    HorizontalLayout {
-                                        spacing: 0px;
-                                        CheckBox {
-                                            width: 44px;
-                                            height: 32px;
-                                            text: "";
-                                            checked: row.selected;
-                                            toggled => { root.toggle-row-selection(index); }
+                                    for row[index] in root.app-rows: Rectangle {
+                                        height: 32px;
+                                        background: row_hover.has-hover || root.current-row == index ? #f3f3f1 : #ffffff;
+                                        clip: true;
+
+                                        row_hover := TouchArea {
+                                            width: parent.width;
+                                            height: parent.height;
+                                            clicked => { root.current-row = index; }
                                         }
-                                        Text { text: row.name; width: 132px; font-size: 13px; color: #2f3437; vertical-alignment: center; }
-                                        Text { text: row.purpose; width: 74px; font-size: 13px; color: #555555; vertical-alignment: center; }
-                                        Text { text: row.source; horizontal-stretch: 2; font-size: 13px; color: #555555; vertical-alignment: center; }
-                                        Text { text: row.verification; width: 100px; font-size: 13px; color: #555555; vertical-alignment: center; }
-                                        Text { text: row.install_method; width: 86px; font-size: 13px; color: #2f3437; vertical-alignment: center; }
-                                        Text { text: row.path; width: 150px; font-size: 13px; color: #555555; vertical-alignment: center; }
 
                                         HorizontalLayout {
-                                            width: 132px;
-                                            height: 32px;
-                                            spacing: 4px;
-                                            opacity: row_hover.has-hover || root.current-row == index ? 1 : 0;
+                                            spacing: 0px;
+                                            CheckBox {
+                                                width: 44px;
+                                                height: 32px;
+                                                text: "";
+                                                checked: row.selected;
+                                                toggled => { root.toggle-row-selection(index); }
+                                            }
+                                            Text { text: row.name; width: 132px; font-size: 13px; color: #2f3437; vertical-alignment: center; }
+                                            Text { text: row.purpose; width: 74px; font-size: 13px; color: #555555; vertical-alignment: center; }
+                                            Text { text: row.source; horizontal-stretch: 2; font-size: 13px; color: #555555; vertical-alignment: center; }
+                                            Text { text: row.verification; width: 100px; font-size: 13px; color: #555555; vertical-alignment: center; }
+                                            Text { text: row.install_method; width: 86px; font-size: 13px; color: #2f3437; vertical-alignment: center; }
+                                            Text { text: row.path; width: 150px; font-size: 13px; color: #555555; vertical-alignment: center; }
 
-                                            RowActionButton { text: "官网"; clicked => { root.open-row-homepage(index); } }
-                                            RowActionButton { text: "编辑"; clicked => { root.show-edit-row-form(index); } }
-                                            RowActionButton { text: "删除"; clicked => { root.request-delete-row(index); } }
+                                            HorizontalLayout {
+                                                width: 132px;
+                                                height: 32px;
+                                                spacing: 4px;
+                                                opacity: row_hover.has-hover || root.current-row == index ? 1 : 0;
+
+                                                RowActionButton { text: "官网"; clicked => { root.open-row-homepage(index); } }
+                                                RowActionButton { text: "编辑"; clicked => { root.show-edit-row-form(index); } }
+                                                RowActionButton { text: "删除"; clicked => { root.request-delete-row(index); } }
+                                            }
                                         }
                                     }
                                 }

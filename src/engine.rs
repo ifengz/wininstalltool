@@ -711,6 +711,64 @@ mod tests {
     }
 
     #[test]
+    fn manual_install_entries_validate_but_do_not_build_command() {
+        let app = AppEntry {
+            id: "manual-app".to_owned(),
+            name: "Manual App".to_owned(),
+            category: "utility".to_owned(),
+            homepage_url: Some("https://example.com".to_owned()),
+            enabled_by_default: false,
+            verification_status: "candidate_low".to_owned(),
+            source: PackageSource {
+                source_type: "manual".to_owned(),
+                package_id: None,
+                url: Some("https://example.com".to_owned()),
+                repo: None,
+                asset_pattern: None,
+            },
+            install: InstallSpec {
+                method: "manual".to_owned(),
+                requires_admin: true,
+                supports_custom_path: false,
+                args: None,
+                silent_args: None,
+                direct_silent_args: None,
+                direct_install_location_arg: None,
+                fallback_notes: Some("needs manual verification".to_owned()),
+            },
+            detect: DetectSpec {
+                detect_type: "any".to_owned(),
+                rules: vec![DetectRule {
+                    rule_type: "registry_uninstall_display_name_contains".to_owned(),
+                    value: "Manual App".to_owned(),
+                }],
+            },
+            notes: None,
+        };
+        let manifest = AppManifest {
+            schema_version: 1,
+            generated_at: "test".to_owned(),
+            default_install_root: "C:\\Apps".to_owned(),
+            apps: vec![app.clone()],
+        };
+
+        let report = validate_manifest_for_install(&manifest);
+
+        assert!(report.errors.is_empty());
+        assert!(
+            report
+                .warnings
+                .iter()
+                .any(|warning| warning.contains("unrecognized source type `manual`"))
+        );
+        assert!(
+            build_install_command(&app, "C:\\Apps", std::path::Path::new("cache"))
+                .expect_err("manual entries must not build install commands")
+                .contains("unsupported install method `manual`")
+        );
+    }
+
+    #[test]
     fn path_exists_rule_detects_existing_file() {
         let marker_path = std::env::temp_dir().join("wininstalltool-detect-marker.txt");
         std::fs::write(&marker_path, "ok").expect("marker should be writable");

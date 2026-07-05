@@ -94,6 +94,13 @@ fn ordered_categories(manifest: &AppManifest) -> Vec<&str> {
         "office",
         "developer_tool",
         "security",
+        "input_method",
+        "remote_control",
+        "cloud_drive",
+        "music",
+        "ai_tool",
+        "network_tool",
+        "screenshot",
         "image_viewer",
         "通用软件",
         "utility",
@@ -122,6 +129,13 @@ fn category_label(category: &str) -> &str {
         "developer_tool" => "开发工具",
         "office" => "办公套件",
         "security" => "安全防护",
+        "input_method" => "输入法",
+        "remote_control" => "远程控制",
+        "cloud_drive" => "网盘",
+        "music" => "音乐",
+        "ai_tool" => "AI 工具",
+        "network_tool" => "网络工具",
+        "screenshot" => "截图工具",
         "image_viewer" => "看图工具",
         "通用软件" => "通用软件",
         "utility" => "通用软件",
@@ -150,6 +164,7 @@ fn source_summary(app: &AppEntry) -> String {
             .as_ref()
             .map(|repo| format!("GitHub Release / {repo}"))
             .unwrap_or_else(|| "GitHub Release".to_owned()),
+        "manual" => "待配置".to_owned(),
         source_type => source_type.to_owned(),
     }
 }
@@ -273,5 +288,31 @@ mod tests {
                 && category.count == 1
         }));
         assert_eq!(view.rows[0].purpose, "driver_tool");
+    }
+
+    #[test]
+    fn view_model_labels_expanded_company_categories_in_chinese() {
+        let manifest = AppManifest::load_from_default_path().expect("manifest should load");
+        let view = super::build_view_model(&manifest, &[], None, "D:\\Apps");
+        let labels = view
+            .categories
+            .iter()
+            .map(|category| category.label.as_str())
+            .collect::<Vec<_>>();
+
+        for expected_label in [
+            "输入法",
+            "远程控制",
+            "网盘",
+            "音乐",
+            "AI 工具",
+            "网络工具",
+            "截图工具",
+        ] {
+            assert!(
+                labels.contains(&expected_label),
+                "missing category label: {expected_label}"
+            );
+        }
     }
 }
