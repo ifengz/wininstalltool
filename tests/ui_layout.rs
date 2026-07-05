@@ -170,3 +170,26 @@ fn main_content_panels_keep_right_inset() {
         "sidebar action buttons must stay compact enough to avoid bottom overflow"
     );
 }
+
+#[test]
+fn windows_packaged_app_uses_gui_subsystem_and_software_renderer() {
+    let main_rs = fs::read_to_string("src/main.rs")
+        .expect("main Rust entry exists")
+        .replace("\r\n", "\n");
+
+    assert!(
+        main_rs.contains("#![cfg_attr(target_os = \"windows\", windows_subsystem = \"windows\")]"),
+        "Windows release app must not open a separate console window"
+    );
+    assert!(
+        main_rs.contains("fn configure_windows_renderer() -> Result<(), slint::PlatformError>")
+            && main_rs.contains(".backend_name(\"winit\".to_owned())")
+            && main_rs.contains(".renderer_name(\"software\".to_owned())")
+            && main_rs.contains(".select()"),
+        "Windows startup must select Slint's software renderer before creating the window"
+    );
+    assert!(
+        main_rs.find("configure_windows_renderer()?") < main_rs.find("let app = AppWindow::new()?"),
+        "renderer selection must happen before AppWindow::new()"
+    );
+}

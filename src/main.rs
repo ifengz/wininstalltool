@@ -1,3 +1,5 @@
+#![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
+
 mod config;
 mod engine;
 mod ui_model;
@@ -33,6 +35,7 @@ const TABLE_COLUMNS: [(&str, f32, f32); 7] = [
 const DEFAULT_NEW_APP_CATEGORY: &str = "通用软件";
 
 fn main() -> Result<(), slint::PlatformError> {
+    configure_windows_renderer()?;
     let app = AppWindow::new()?;
     let state = Rc::new(RefCell::new(RuntimeState::load()));
 
@@ -40,6 +43,19 @@ fn main() -> Result<(), slint::PlatformError> {
     wire_callbacks(&app, Rc::clone(&state));
 
     app.run()
+}
+
+#[cfg(target_os = "windows")]
+fn configure_windows_renderer() -> Result<(), slint::PlatformError> {
+    slint::BackendSelector::new()
+        .backend_name("winit".to_owned())
+        .renderer_name("software".to_owned())
+        .select()
+}
+
+#[cfg(not(target_os = "windows"))]
+fn configure_windows_renderer() -> Result<(), slint::PlatformError> {
+    Ok(())
 }
 
 struct RuntimeState {
