@@ -88,21 +88,34 @@ fn category_views(manifest: &AppManifest) -> Vec<CategoryView> {
 }
 
 fn ordered_categories(manifest: &AppManifest) -> Vec<&str> {
-    [
+    let mut categories = [
         "browser",
         "messaging",
         "office",
         "developer_tool",
         "security",
         "image_viewer",
+        "通用软件",
         "utility",
     ]
     .into_iter()
     .filter(|category| manifest.apps.iter().any(|app| app.category == *category))
-    .collect()
+    .collect::<Vec<_>>();
+
+    let mut custom_categories = manifest
+        .apps
+        .iter()
+        .map(|app| app.category.as_str())
+        .filter(|category| !categories.contains(category))
+        .collect::<Vec<_>>();
+    custom_categories.sort_unstable();
+    custom_categories.dedup();
+    categories.extend(custom_categories);
+
+    categories
 }
 
-fn category_label(category: &str) -> &'static str {
+fn category_label(category: &str) -> &str {
     match category {
         "browser" => "浏览器",
         "messaging" => "沟通协作",
@@ -110,8 +123,9 @@ fn category_label(category: &str) -> &'static str {
         "office" => "办公套件",
         "security" => "安全防护",
         "image_viewer" => "看图工具",
+        "通用软件" => "通用软件",
         "utility" => "通用软件",
-        _ => "通用软件",
+        _ => category,
     }
 }
 
@@ -158,7 +172,9 @@ fn install_path_label(app: &AppEntry, install_root: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::AppManifest;
+    use crate::config::{
+        AppEntry, AppManifest, DetectRule, DetectSpec, InstallSpec, PackageSource,
+    };
 
     #[test]
     fn view_model_preserves_selected_counts_and_categories() {
@@ -206,5 +222,56 @@ mod tests {
 
         assert_eq!(chrome.path, "由安装器决定");
         assert_eq!(vivaldi.path, "D:\\CompanyApps");
+    }
+
+    #[test]
+    fn view_model_adds_custom_category_tabs_from_manifest() {
+        let manifest = AppManifest {
+            schema_version: 1,
+            generated_at: "test".to_owned(),
+            default_install_root: "D:\\Apps".to_owned(),
+            apps: vec![AppEntry {
+                id: "custom-tool".to_owned(),
+                name: "Custom Tool".to_owned(),
+                category: "driver_tool".to_owned(),
+                homepage_url: None,
+                enabled_by_default: false,
+                verification_status: "candidate_medium".to_owned(),
+                source: PackageSource {
+                    source_type: "winget".to_owned(),
+                    package_id: Some("Vendor.CustomTool".to_owned()),
+                    url: None,
+                    repo: None,
+                    asset_pattern: None,
+                },
+                install: InstallSpec {
+                    method: "winget".to_owned(),
+                    requires_admin: true,
+                    supports_custom_path: false,
+                    args: None,
+                    silent_args: None,
+                    direct_silent_args: None,
+                    direct_install_location_arg: None,
+                    fallback_notes: None,
+                },
+                detect: DetectSpec {
+                    detect_type: "path_exists".to_owned(),
+                    rules: vec![DetectRule {
+                        rule_type: "path_exists".to_owned(),
+                        value: "C:\\Program Files\\CustomTool\\tool.exe".to_owned(),
+                    }],
+                },
+                notes: None,
+            }],
+        };
+
+        let view = super::build_view_model(&manifest, &[], None, "D:\\Apps");
+
+        assert!(view.categories.iter().any(|category| {
+            category.id.as_deref() == Some("driver_tool")
+                && category.label == "driver_tool"
+                && category.count == 1
+        }));
+        assert_eq!(view.rows[0].purpose, "driver_tool");
     }
 }

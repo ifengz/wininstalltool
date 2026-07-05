@@ -21,6 +21,16 @@ use std::rc::Rc;
 slint::include_modules!();
 
 const INSTALL_LOG_PATH: &str = "logs/install.log";
+const TABLE_COLUMNS: [(&str, f32, f32); 7] = [
+    ("", 38.0, 0.0),
+    ("软件", 132.0, 1.0),
+    ("作用", 74.0, 0.0),
+    ("来源", 220.0, 2.0),
+    ("验证", 100.0, 0.0),
+    ("安装", 86.0, 0.0),
+    ("路径", 150.0, 1.0),
+];
+const DEFAULT_NEW_APP_CATEGORY: &str = "通用软件";
 
 fn main() -> Result<(), slint::PlatformError> {
     let app = AppWindow::new()?;
@@ -164,6 +174,19 @@ fn wire_callbacks(app: &AppWindow, state: Rc<RefCell<RuntimeState>>) {
     });
 
     let weak = app.as_weak();
+    let row_homepage_state = Rc::clone(&state);
+    app.on_open_row_homepage(move |row| {
+        let Some(app) = weak.upgrade() else {
+            return;
+        };
+
+        let mut state = row_homepage_state.borrow_mut();
+        state.current_row = row;
+        open_homepage_for_current_row(&mut state, row);
+        refresh_window(&app, &state);
+    });
+
+    let weak = app.as_weak();
     let install_state = Rc::clone(&state);
     app.on_start_install(move || {
         let Some(app) = weak.upgrade() else {
@@ -238,6 +261,19 @@ fn wire_callbacks(app: &AppWindow, state: Rc<RefCell<RuntimeState>>) {
     });
 
     let weak = app.as_weak();
+    let edit_row_state = Rc::clone(&state);
+    app.on_show_edit_row_form(move |row| {
+        let Some(app) = weak.upgrade() else {
+            return;
+        };
+
+        let mut state = edit_row_state.borrow_mut();
+        state.current_row = row;
+        show_edit_current_app_form(&mut state, row);
+        refresh_window(&app, &state);
+    });
+
+    let weak = app.as_weak();
     let save_add_state = Rc::clone(&state);
     app.on_save_add_app_form(move || {
         let Some(app) = weak.upgrade() else {
@@ -296,6 +332,19 @@ fn wire_callbacks(app: &AppWindow, state: Rc<RefCell<RuntimeState>>) {
 
         let mut state = delete_app_state.borrow_mut();
         request_delete_current_app(&mut state, app.get_current_row());
+        refresh_window(&app, &state);
+    });
+
+    let weak = app.as_weak();
+    let delete_row_state = Rc::clone(&state);
+    app.on_request_delete_row(move |row| {
+        let Some(app) = weak.upgrade() else {
+            return;
+        };
+
+        let mut state = delete_row_state.borrow_mut();
+        state.current_row = row;
+        request_delete_current_app(&mut state, row);
         refresh_window(&app, &state);
     });
 
@@ -389,6 +438,18 @@ fn wire_callbacks(app: &AppWindow, state: Rc<RefCell<RuntimeState>>) {
         toggle_selected_app_by_visible_row(&mut state, row);
         refresh_window(&app, &state);
     });
+
+    let weak = app.as_weak();
+    let toggle_visible_state = Rc::clone(&state);
+    app.on_toggle_visible_selection(move || {
+        let Some(app) = weak.upgrade() else {
+            return;
+        };
+
+        let mut state = toggle_visible_state.borrow_mut();
+        toggle_visible_selection(&mut state);
+        refresh_window(&app, &state);
+    });
 }
 
 fn refresh_window(app: &AppWindow, state: &RuntimeState) {
@@ -430,7 +491,9 @@ fn refresh_window(app: &AppWindow, state: &RuntimeState) {
             app.set_selected_count(0);
             app.set_admin_count(0);
             app.set_verification_count(0);
+            app.set_all_visible_selected(false);
             app.set_category_labels(shared_string_model(vec!["全部".to_owned()]));
+            app.set_app_rows(app_row_model(Vec::new()));
             app.set_table_rows(table_row_model(vec![vec![
                 "".to_owned(),
                 "配置错误".to_owned(),
@@ -454,6 +517,8 @@ fn apply_view_model(app: &AppWindow, view: InstallerViewModel) {
             .map(category_button_label)
             .collect::<Vec<_>>(),
     ));
+    app.set_app_rows(app_row_model(view.rows.clone()));
+    app.set_all_visible_selected(!view.rows.is_empty() && view.rows.iter().all(|row| row.selected));
     app.set_table_rows(table_row_model(
         view.rows
             .into_iter()
@@ -473,25 +538,17 @@ fn apply_view_model(app: &AppWindow, view: InstallerViewModel) {
 }
 
 fn table_columns() -> ModelRc<TableColumn> {
-    let columns = [
-        ("选", 44.0, 0.0),
-        ("软件", 150.0, 1.0),
-        ("作用", 86.0, 0.0),
-        ("来源", 250.0, 2.0),
-        ("验证", 106.0, 0.0),
-        ("安装", 106.0, 0.0),
-        ("路径", 180.0, 1.0),
-    ]
-    .into_iter()
-    .map(|(title, width, stretch)| {
-        let mut column = TableColumn::default();
-        column.title = title.into();
-        column.min_width = width;
-        column.width = width;
-        column.horizontal_stretch = stretch;
-        column
-    })
-    .collect::<Vec<_>>();
+    let columns = TABLE_COLUMNS
+        .into_iter()
+        .map(|(title, width, stretch)| {
+            let mut column = TableColumn::default();
+            column.title = title.into();
+            column.min_width = width;
+            column.width = width;
+            column.horizontal_stretch = stretch;
+            column
+        })
+        .collect::<Vec<_>>();
 
     Rc::new(VecModel::from(columns)).into()
 }
@@ -509,6 +566,23 @@ fn table_row_model(rows: Vec<Vec<String>>) -> ModelRc<ModelRc<StandardListViewIt
                 })
                 .collect::<Vec<_>>();
             Rc::new(VecModel::from(cells)).into()
+        })
+        .collect::<Vec<_>>();
+
+    Rc::new(VecModel::from(rows)).into()
+}
+
+fn app_row_model(rows: Vec<crate::ui_model::AppRowView>) -> ModelRc<UiAppRow> {
+    let rows = rows
+        .into_iter()
+        .map(|row| UiAppRow {
+            selected: if row.selected { "✓" } else { "" }.into(),
+            name: row.name.into(),
+            purpose: row.purpose.into(),
+            source: row.source.into(),
+            verification: row.verification.into(),
+            install_method: row.install_method.into(),
+            path: row.path.into(),
         })
         .collect::<Vec<_>>();
 
@@ -602,7 +676,7 @@ fn show_add_app_form(state: &mut RuntimeState) {
         editing_existing_id: None,
         id: format!("new-app-{next_number}"),
         name: String::new(),
-        category: "utility".to_owned(),
+        category: DEFAULT_NEW_APP_CATEGORY.to_owned(),
         winget_id: String::new(),
         homepage: String::new(),
         detect_path: String::new(),
@@ -717,7 +791,7 @@ fn app_from_add_form(form: &AddAppFormState) -> Result<AppEntry, String> {
     Ok(AppEntry {
         id: id.to_owned(),
         name: name.to_owned(),
-        category: non_empty_or(&form.category, "utility"),
+        category: non_empty_or(&form.category, DEFAULT_NEW_APP_CATEGORY),
         homepage_url: optional_trimmed(&form.homepage),
         enabled_by_default: false,
         verification_status: "candidate_medium".to_owned(),
@@ -1196,6 +1270,47 @@ fn toggle_selected_app_by_visible_row(state: &mut RuntimeState, current_row: i32
     }
 }
 
+fn toggle_visible_selection(state: &mut RuntimeState) -> bool {
+    let Ok(manifest) = &state.manifest else {
+        state.push_log("全选失败：配置未正确读取");
+        return false;
+    };
+
+    let visible_ids = visible_app_ids(manifest, state.active_category.as_deref());
+    if visible_ids.is_empty() {
+        state.push_log("全选跳过：当前列表没有软件");
+        return false;
+    }
+
+    let all_selected = visible_ids
+        .iter()
+        .all(|id| state.selected.iter().any(|selected| selected == id));
+    if all_selected {
+        state
+            .selected
+            .retain(|id| !visible_ids.iter().any(|visible_id| visible_id == id));
+        state.push_log(format!("已取消选择当前列表：{} 个软件", visible_ids.len()));
+        false
+    } else {
+        for id in visible_ids.iter() {
+            if !state.selected.iter().any(|selected| selected == id) {
+                state.selected.push(id.clone());
+            }
+        }
+        state.push_log(format!("已选择当前列表：{} 个软件", visible_ids.len()));
+        true
+    }
+}
+
+fn visible_app_ids(manifest: &AppManifest, active_category: Option<&str>) -> Vec<String> {
+    manifest
+        .apps
+        .iter()
+        .filter(|app| active_category.is_none_or(|category| app.category == category))
+        .map(|app| app.id.clone())
+        .collect()
+}
+
 fn visible_app_id_by_index(
     manifest: &AppManifest,
     active_category: Option<&str>,
@@ -1495,6 +1610,39 @@ mod tests {
     }
 
     #[test]
+    fn visible_header_toggle_selects_and_clears_active_category() {
+        let manifest =
+            crate::config::AppManifest::load_from_default_path().expect("apps example should load");
+        let mut state = super::RuntimeState {
+            manifest: Ok(manifest),
+            selected: Vec::new(),
+            active_category: Some("browser".to_owned()),
+            current_row: -1,
+            install_root: "D:\\Apps".to_owned(),
+            cache_root: "cache".to_owned(),
+            task_status: "就绪".to_owned(),
+            task_progress: 0.0,
+            pending_delete_app_id: None,
+            pending_delete_app_name: None,
+            add_form: super::AddAppFormState::default(),
+            logs: Vec::new(),
+        };
+
+        let selected_all = super::toggle_visible_selection(&mut state);
+        assert!(selected_all);
+        assert!(state.selected.iter().any(|id| id == "chrome"));
+        assert!(state.selected.iter().any(|id| id == "edge"));
+        assert!(state.selected.iter().any(|id| id == "vivaldi"));
+        assert!(!state.selected.iter().any(|id| id == "feishu"));
+
+        let cleared = super::toggle_visible_selection(&mut state);
+        assert!(!cleared);
+        assert!(!state.selected.iter().any(|id| id == "chrome"));
+        assert!(!state.selected.iter().any(|id| id == "edge"));
+        assert!(!state.selected.iter().any(|id| id == "vivaldi"));
+    }
+
+    #[test]
     fn manifest_remove_uses_visible_category_row() {
         let manifest =
             crate::config::AppManifest::load_from_default_path().expect("apps example should load");
@@ -1581,7 +1729,22 @@ mod tests {
                 .iter()
                 .all(|app| app.id != state.add_form.id)
         );
-        assert_eq!(state.add_form.category, "utility");
+        assert_eq!(state.add_form.category, super::DEFAULT_NEW_APP_CATEGORY);
+    }
+
+    #[test]
+    fn table_columns_fit_default_right_panel_with_inset() {
+        let guarded_width = 820.0;
+        let total_width = super::TABLE_COLUMNS
+            .iter()
+            .map(|(_, width, _)| width)
+            .sum::<f32>();
+
+        assert!(
+            total_width <= guarded_width,
+            "table minimum width {total_width} exceeds guarded right-panel width {}",
+            guarded_width
+        );
     }
 
     #[test]

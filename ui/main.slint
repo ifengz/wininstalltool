@@ -1,15 +1,26 @@
 import {
     Button,
+    CheckBox,
     LineEdit,
-    ProgressIndicator,
+    ScrollView,
     StandardTableView,
     TextEdit,
 } from "std-widgets.slint";
 
+export struct UiAppRow {
+    selected: string,
+    name: string,
+    purpose: string,
+    source: string,
+    verification: string,
+    install_method: string,
+    path: string,
+}
+
 component PhaseRow inherits Rectangle {
     in property <string> label;
     in property <bool> done;
-    height: 22px;
+    height: 20px;
 
     HorizontalLayout {
         spacing: 8px;
@@ -30,6 +41,39 @@ component PhaseRow inherits Rectangle {
     }
 }
 
+component SidebarSectionLabel inherits Text {
+    in property <string> label;
+    text: label;
+    font-size: 11px;
+    font-weight: 700;
+    color: #787774;
+    height: 16px;
+    vertical-alignment: center;
+}
+
+component RowActionButton inherits Rectangle {
+    in property <string> text;
+    callback clicked();
+    width: 40px;
+    height: 24px;
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: action-touch.pressed ? #a8a8a4 : #ddddda;
+    background: action-touch.has-hover ? #ffffff : #fbfbfa;
+
+    Text {
+        text: root.text;
+        font-size: 12px;
+        color: #111111;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    action-touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
 export component AppWindow inherits Window {
     title: "WinInstallTool";
     width: 1180px;
@@ -42,9 +86,11 @@ export component AppWindow inherits Window {
     in property <int> selected-count;
     in property <int> admin-count;
     in property <int> verification-count;
+    in property <bool> all-visible-selected;
     in property <[string]> category-labels;
     in property <[TableColumn]> table-columns;
     in property <[[StandardListViewItem]]> table-rows;
+    in property <[UiAppRow]> app-rows;
     in-out property <int> current-row: -1;
     in property <string> log-text;
     in property <bool> delete-confirm-visible;
@@ -79,15 +125,23 @@ export component AppWindow inherits Window {
     callback export-log();
     callback category-selected(int);
     callback toggle-row-selection(int);
+    callback toggle-visible-selection();
+    callback open-row-homepage(int);
+    callback show-edit-row-form(int);
+    callback request-delete-row(int);
 
     background: #f7f6f3;
 
-    HorizontalLayout {
-        padding: 16px;
-        spacing: 12px;
+    Rectangle {
+        width: root.width;
+        height: root.height;
+        background: #f7f6f3;
 
         Rectangle {
+            x: 16px;
+            y: 16px;
             width: 246px;
+            height: root.height - 32px;
             border-radius: 3px;
             border-width: 1px;
             border-color: #e3e3df;
@@ -95,10 +149,10 @@ export component AppWindow inherits Window {
 
             VerticalLayout {
                 padding: 16px;
-                spacing: 10px;
+                spacing: 6px;
 
                 Text {
-                    text: "Office Standard";
+                    text: "Sinopin 软件安装";
                     font-size: 17px;
                     font-weight: 700;
                     color: #111111;
@@ -106,41 +160,30 @@ export component AppWindow inherits Window {
                     vertical-alignment: center;
                 }
 
-                Text {
-                    text: "10 个优先软件，顺序执行并写日志";
-                    font-size: 13px;
-                    color: #787774;
-                    height: 22px;
-                    vertical-alignment: center;
-                }
-
                 Rectangle { height: 8px; }
 
-                Button { text: "开始安装"; height: 30px; clicked => { root.start-install(); } }
-                Button { text: "仅下载缓存"; height: 30px; clicked => { root.download-cache(); } }
-                Button { text: "校验配置"; height: 30px; clicked => { root.validate-config(); } }
-                Button { text: "检测已安装"; height: 30px; clicked => { root.detect-installed(); } }
-                Button { text: "添加软件"; height: 30px; clicked => { root.show-add-app-form(); } }
-                Button {
-                    text: "编辑当前软件";
-                    height: 30px;
-                    enabled: root.current-row >= 0;
-                    clicked => { root.show-edit-current-app-form(); }
-                }
-                Button { text: "打开软件配置"; height: 30px; clicked => { root.open-config(); } }
-                Button { text: "重载配置"; height: 30px; clicked => { root.reload-config(); } }
-                Button {
-                    text: "删除当前软件";
-                    height: 30px;
-                    enabled: root.current-row >= 0;
-                    clicked => { root.request-delete-current-app(); }
-                }
+                SidebarSectionLabel { label: "执行"; }
+                Button { text: "开始安装"; height: 28px; clicked => { root.start-install(); } }
+                Button { text: "仅下载缓存"; height: 28px; clicked => { root.download-cache(); } }
+
+                Rectangle { height: 4px; }
+
+                SidebarSectionLabel { label: "软件管理"; }
+                Button { text: "添加软件"; height: 28px; clicked => { root.show-add-app-form(); } }
+
+                Rectangle { height: 4px; }
+
+                SidebarSectionLabel { label: "配置工具"; }
+                Button { text: "检查清单"; height: 28px; clicked => { root.validate-config(); } }
+                Button { text: "扫描已安装"; height: 28px; clicked => { root.detect-installed(); } }
+                Button { text: "打开清单文件"; height: 28px; clicked => { root.open-config(); } }
+                Button { text: "重新读取清单"; height: 28px; clicked => { root.reload-config(); } }
 
                 Text {
                     text: "非 Windows 会阻止真实安装";
                     font-size: 12px;
                     color: #787774;
-                    height: 24px;
+                    height: 22px;
                     horizontal-alignment: center;
                     vertical-alignment: center;
                 }
@@ -157,18 +200,26 @@ export component AppWindow inherits Window {
         }
 
         VerticalLayout {
+            x: 274px;
+            y: 16px;
+            width: root.width - 290px;
+            height: root.height - 32px;
             spacing: 12px;
-            horizontal-stretch: 1;
 
             Rectangle {
                 border-radius: 3px;
                 border-width: 1px;
                 border-color: #e3e3df;
                 background: #ffffff;
+                clip: true;
+                horizontal-stretch: 1;
                 vertical-stretch: 1;
 
                 VerticalLayout {
-                    padding: 16px;
+                    padding-left: 16px;
+                    padding-top: 16px;
+                    padding-right: 28px;
+                    padding-bottom: 16px;
                     spacing: 10px;
 
                     HorizontalLayout {
@@ -176,11 +227,11 @@ export component AppWindow inherits Window {
                         spacing: 10px;
 
                         Text {
-                            text: "安装中心";
-                            font-size: 20px;
+                            text: "软件列表";
+                            font-size: 13px;
                             font-weight: 700;
                             color: #111111;
-                            width: 96px;
+                            width: 86px;
                             vertical-alignment: center;
                         }
 
@@ -188,19 +239,19 @@ export component AppWindow inherits Window {
                             text: "默认安装路径";
                             font-size: 13px;
                             color: #787774;
-                            width: 88px;
+                            width: 78px;
                             vertical-alignment: center;
                         }
 
                         LineEdit {
                             text <=> root.install-root;
-                            width: 320px;
+                            width: 300px;
                             height: 28px;
                         }
 
                         Button {
                             text: "选择...";
-                            width: 66px;
+                            width: 60px;
                             height: 28px;
                             clicked => { root.choose-install-root(); }
                         }
@@ -211,7 +262,7 @@ export component AppWindow inherits Window {
                             text: "已选 " + root.selected-count;
                             font-size: 13px;
                             color: #2f3437;
-                            width: 64px;
+                            width: 54px;
                             vertical-alignment: center;
                             horizontal-alignment: right;
                         }
@@ -219,7 +270,7 @@ export component AppWindow inherits Window {
                             text: "需管理员 " + root.admin-count;
                             font-size: 13px;
                             color: #787774;
-                            width: 82px;
+                            width: 70px;
                             vertical-alignment: center;
                             horizontal-alignment: right;
                         }
@@ -227,7 +278,7 @@ export component AppWindow inherits Window {
                             text: "待实测 " + root.verification-count;
                             font-size: 13px;
                             color: #787774;
-                            width: 74px;
+                            width: 64px;
                             vertical-alignment: center;
                             horizontal-alignment: right;
                         }
@@ -277,31 +328,81 @@ export component AppWindow inherits Window {
                             clicked => { root.category-selected(index); }
                         }
                         Rectangle { horizontal-stretch: 1; }
-                        Button {
-                            text: "切换选择";
-                            width: 76px;
-                            height: 26px;
-                            enabled: root.current-row >= 0;
-                            clicked => { root.toggle-row-selection(root.current-row); }
-                        }
-                        Button {
-                            text: "打开官网";
-                            width: 76px;
-                            height: 26px;
-                            enabled: root.current-row >= 0;
-                            clicked => { root.open-homepage(); }
-                        }
                     }
 
-                    StandardTableView {
-                        columns: root.table-columns;
-                        rows: root.table-rows;
-                        current-row <=> root.current-row;
+                    Rectangle {
                         horizontal-stretch: 1;
                         vertical-stretch: 1;
-                        row-pointer-event(row, event, position) => {
-                            if event.button == PointerEventButton.left && event.kind == PointerEventKind.down && position.x < 44px {
-                                root.toggle-row-selection(row);
+                        clip: true;
+
+                        ScrollView {
+                            vertical-stretch: 1;
+
+                            VerticalLayout {
+                                spacing: 0px;
+
+                                Rectangle {
+                                    height: 34px;
+                                    background: #fafafa;
+
+                                    HorizontalLayout {
+                                        spacing: 0px;
+                                        CheckBox {
+                                            width: 44px;
+                                            height: 34px;
+                                            text: "";
+                                            checked: root.all-visible-selected;
+                                            toggled => { root.toggle-visible-selection(); }
+                                        }
+                                        Text { text: "软件"; width: 132px; font-size: 12px; color: #787774; vertical-alignment: center; }
+                                        Text { text: "作用"; width: 74px; font-size: 12px; color: #787774; vertical-alignment: center; }
+                                        Text { text: "来源"; horizontal-stretch: 2; font-size: 12px; color: #787774; vertical-alignment: center; }
+                                        Text { text: "验证"; width: 100px; font-size: 12px; color: #787774; vertical-alignment: center; }
+                                        Text { text: "安装"; width: 86px; font-size: 12px; color: #787774; vertical-alignment: center; }
+                                        Text { text: "路径"; width: 150px; font-size: 12px; color: #787774; vertical-alignment: center; }
+                                        Text { text: "操作"; width: 132px; font-size: 12px; color: #787774; vertical-alignment: center; horizontal-alignment: center; }
+                                    }
+                                }
+
+                                for row[index] in root.app-rows: Rectangle {
+                                    height: 32px;
+                                    background: row_hover.has-hover || root.current-row == index ? #f3f3f1 : #ffffff;
+                                    clip: true;
+
+                                    row_hover := TouchArea {
+                                        width: parent.width;
+                                        height: parent.height;
+                                        clicked => { root.current-row = index; }
+                                    }
+
+                                    HorizontalLayout {
+                                        spacing: 0px;
+                                        Text { text: row.selected; width: 44px; font-size: 13px; color: #2f3437; vertical-alignment: center; horizontal-alignment: center; }
+                                        Text { text: row.name; width: 132px; font-size: 13px; color: #2f3437; vertical-alignment: center; }
+                                        Text { text: row.purpose; width: 74px; font-size: 13px; color: #555555; vertical-alignment: center; }
+                                        Text { text: row.source; horizontal-stretch: 2; font-size: 13px; color: #555555; vertical-alignment: center; }
+                                        Text { text: row.verification; width: 100px; font-size: 13px; color: #555555; vertical-alignment: center; }
+                                        Text { text: row.install_method; width: 86px; font-size: 13px; color: #2f3437; vertical-alignment: center; }
+                                        Text { text: row.path; width: 150px; font-size: 13px; color: #555555; vertical-alignment: center; }
+
+                                        HorizontalLayout {
+                                            width: 132px;
+                                            height: 32px;
+                                            spacing: 4px;
+                                            opacity: row_hover.has-hover || root.current-row == index ? 1 : 0;
+
+                                            RowActionButton { text: "官网"; clicked => { root.open-row-homepage(index); } }
+                                            RowActionButton { text: "编辑"; clicked => { root.show-edit-row-form(index); } }
+                                            RowActionButton { text: "删除"; clicked => { root.request-delete-row(index); } }
+                                        }
+                                    }
+
+                                    TouchArea {
+                                        width: 44px;
+                                        height: parent.height;
+                                        clicked => { root.toggle-row-selection(index); }
+                                    }
+                                }
                             }
                         }
                     }
@@ -314,9 +415,14 @@ export component AppWindow inherits Window {
                 border-width: 1px;
                 border-color: #e3e3df;
                 background: #ffffff;
+                clip: true;
+                horizontal-stretch: 1;
 
                 VerticalLayout {
-                    padding: 12px;
+                    padding-left: 12px;
+                    padding-top: 12px;
+                    padding-right: 28px;
+                    padding-bottom: 12px;
                     spacing: 8px;
 
                     HorizontalLayout {
@@ -336,16 +442,11 @@ export component AppWindow inherits Window {
                             text: root.task-status;
                             font-size: 12px;
                             color: #787774;
-                            width: 210px;
+                            width: 150px;
                             vertical-alignment: center;
                         }
 
-                        ProgressIndicator {
-                            progress: root.task-progress;
-                            indeterminate: false;
-                            height: 8px;
-                            horizontal-stretch: 1;
-                        }
+                        Rectangle { horizontal-stretch: 1; }
 
                         Button { text: "打开日志"; width: 72px; height: 24px; clicked => { root.open-log(); } }
                         Button { text: "清空"; width: 54px; height: 24px; clicked => { root.clear-log(); } }
@@ -354,13 +455,13 @@ export component AppWindow inherits Window {
 
                     HorizontalLayout {
                         visible: root.delete-confirm-visible;
-                        height: 28px;
+                        height: root.delete-confirm-visible ? 28px : 0px;
                         spacing: 8px;
 
                         Text {
                             text: root.delete-confirm-text;
                             font-size: 12px;
-                            color: #2f3437;
+                            color: #c92a2a;
                             vertical-alignment: center;
                             horizontal-stretch: 1;
                         }
@@ -382,6 +483,7 @@ export component AppWindow inherits Window {
 
                     VerticalLayout {
                         visible: root.add-form-visible;
+                        height: root.add-form-visible ? 58px : 0px;
                         spacing: 6px;
 
                         HorizontalLayout {
@@ -397,8 +499,8 @@ export component AppWindow inherits Window {
                             }
 
                             LineEdit { text <=> root.add-app-id; placeholder-text: "id"; width: 120px; height: 24px; }
-                            LineEdit { text <=> root.add-app-name; placeholder-text: "名称"; width: 150px; height: 24px; }
-                            LineEdit { text <=> root.add-app-category; placeholder-text: "分类"; width: 110px; height: 24px; }
+                            LineEdit { text <=> root.add-app-name; placeholder-text: "名称"; width: 130px; height: 24px; }
+                            LineEdit { text <=> root.add-app-category; placeholder-text: "分类；新名称会新增"; width: 150px; height: 24px; }
                             LineEdit { text <=> root.add-app-winget-id; placeholder-text: "winget 包 ID"; width: 190px; height: 24px; }
                         }
 
@@ -424,6 +526,7 @@ export component AppWindow inherits Window {
                     TextEdit {
                         text: root.log-text;
                         read-only: true;
+                        min-height: 96px;
                         vertical-stretch: 1;
                     }
                 }
