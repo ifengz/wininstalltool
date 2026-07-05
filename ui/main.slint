@@ -57,6 +57,7 @@ export component AppWindow inherits Window {
     callback validate-config();
     callback detect-installed();
     callback category-selected(int);
+    callback toggle-row-selection(int);
 
     background: #f7f6f3;
 
@@ -270,6 +271,13 @@ export component AppWindow inherits Window {
                     }
                     Rectangle { horizontal-stretch: 1; }
                     Button {
+                        text: "切换选择";
+                        width: 76px;
+                        height: 26px;
+                        enabled: root.current-row >= 0;
+                        clicked => { root.toggle-row-selection(root.current-row); }
+                    }
+                    Button {
                         text: "打开官网";
                         width: 76px;
                         height: 26px;
@@ -284,6 +292,11 @@ export component AppWindow inherits Window {
                     current-row <=> root.current-row;
                     horizontal-stretch: 1;
                     vertical-stretch: 1;
+                    row-pointer-event(row, event, position) => {
+                        if event.button == PointerEventButton.left && event.kind == PointerEventKind.down && position.x < 44px {
+                            root.toggle-row-selection(row);
+                        }
+                    }
                 }
             }
         }

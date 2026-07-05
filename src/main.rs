@@ -191,18 +191,32 @@ fn wire_callbacks(app: &AppWindow, state: Rc<RefCell<RuntimeState>>) {
     });
 
     let weak = app.as_weak();
+    let category_state = Rc::clone(&state);
     app.on_category_selected(move |index| {
         let Some(app) = weak.upgrade() else {
             return;
         };
 
-        let mut state = state.borrow_mut();
+        let mut state = category_state.borrow_mut();
         let Ok(manifest) = &state.manifest else {
             return;
         };
         state.active_category =
             category_by_index(manifest, index as usize).and_then(|category| category.id);
         state.current_row = -1;
+        refresh_window(&app, &state);
+    });
+
+    let weak = app.as_weak();
+    let toggle_state = Rc::clone(&state);
+    app.on_toggle_row_selection(move |row| {
+        let Some(app) = weak.upgrade() else {
+            return;
+        };
+
+        let mut state = toggle_state.borrow_mut();
+        state.current_row = row;
+        toggle_selected_app_by_visible_row(&mut state, row);
         refresh_window(&app, &state);
     });
 }
@@ -576,6 +590,42 @@ fn open_homepage_for_current_row(state: &mut RuntimeState, current_row: i32) {
     }
 }
 
+fn toggle_selected_app_by_visible_row(state: &mut RuntimeState, current_row: i32) -> bool {
+    let Ok(manifest) = &state.manifest else {
+        state.push_log("切换选择失败：配置未正确读取");
+        return false;
+    };
+
+    let Some(app_id) =
+        visible_app_id_by_index(manifest, state.active_category.as_deref(), current_row)
+    else {
+        state.push_log("切换选择失败：未选择有效软件行");
+        return false;
+    };
+
+    if let Some(index) = state.selected.iter().position(|id| id == &app_id) {
+        state.selected.remove(index);
+        false
+    } else {
+        state.selected.push(app_id);
+        true
+    }
+}
+
+fn visible_app_id_by_index(
+    manifest: &AppManifest,
+    active_category: Option<&str>,
+    index: i32,
+) -> Option<String> {
+    let index = usize::try_from(index).ok()?;
+    manifest
+        .apps
+        .iter()
+        .filter(|app| active_category.is_none_or(|category| app.category == category))
+        .nth(index)
+        .map(|app| app.id.clone())
+}
+
 fn visible_row_by_index(
     manifest: &AppManifest,
     selected: &[String],
@@ -768,6 +818,42 @@ mod tests {
 
         assert_eq!(row.name, "Microsoft Edge");
         assert!(row.homepage_url.starts_with("https://"));
+    }
+
+    #[test]
+    fn visible_app_id_lookup_uses_active_category_order() {
+        let manifest =
+            crate::config::AppManifest::load_from_default_path().expect("apps example should load");
+
+        let app_id = super::visible_app_id_by_index(&manifest, Some("browser"), 1)
+            .expect("browser row should exist");
+
+        assert_eq!(app_id, "edge");
+    }
+
+    #[test]
+    fn visible_row_toggle_updates_selected_ids() {
+        let manifest =
+            crate::config::AppManifest::load_from_default_path().expect("apps example should load");
+        let mut state = super::RuntimeState {
+            manifest: Ok(manifest),
+            selected: vec!["chrome".to_owned()],
+            active_category: Some("browser".to_owned()),
+            current_row: 0,
+            install_root: "D:\\Apps".to_owned(),
+            cache_root: "cache".to_owned(),
+            task_status: "就绪".to_owned(),
+            task_progress: 0.0,
+            logs: Vec::new(),
+        };
+
+        let selected = super::toggle_selected_app_by_visible_row(&mut state, 0);
+        assert!(!selected);
+        assert!(!state.selected.iter().any(|id| id == "chrome"));
+
+        let selected = super::toggle_selected_app_by_visible_row(&mut state, 0);
+        assert!(selected);
+        assert!(state.selected.iter().any(|id| id == "chrome"));
     }
 
     #[test]
