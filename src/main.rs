@@ -2,7 +2,7 @@ mod config;
 mod engine;
 mod ui_model;
 
-use crate::config::{AppManifest, LoadConfigError};
+use crate::config::{AppManifest, DEFAULT_CONFIG_PATH, LoadConfigError};
 use crate::engine::{
     DetectionState, DownloadStatus, build_install_command, detect_app, detect_selected_apps,
     download_cache_for_app, run_install_command, validate_manifest_for_install,
@@ -191,6 +191,42 @@ fn wire_callbacks(app: &AppWindow, state: Rc<RefCell<RuntimeState>>) {
     });
 
     let weak = app.as_weak();
+    let open_config_state = Rc::clone(&state);
+    app.on_open_config(move || {
+        let Some(app) = weak.upgrade() else {
+            return;
+        };
+
+        let mut state = open_config_state.borrow_mut();
+        open_config_file(&mut state);
+        refresh_window(&app, &state);
+    });
+
+    let weak = app.as_weak();
+    let reload_config_state = Rc::clone(&state);
+    app.on_reload_config(move || {
+        let Some(app) = weak.upgrade() else {
+            return;
+        };
+
+        let mut state = reload_config_state.borrow_mut();
+        reload_config(&mut state);
+        refresh_window(&app, &state);
+    });
+
+    let weak = app.as_weak();
+    let delete_app_state = Rc::clone(&state);
+    app.on_delete_current_app(move || {
+        let Some(app) = weak.upgrade() else {
+            return;
+        };
+
+        let mut state = delete_app_state.borrow_mut();
+        delete_current_app(&mut state, app.get_current_row());
+        refresh_window(&app, &state);
+    });
+
+    let weak = app.as_weak();
     let category_state = Rc::clone(&state);
     app.on_category_selected(move |index| {
         let Some(app) = weak.upgrade() else {
@@ -366,6 +402,38 @@ fn run_config_validation(state: &mut RuntimeState) {
             }
         }
         Err(error) => state.push_log(format!("配置读取失败：{error}")),
+    }
+}
+
+fn open_config_file(state: &mut RuntimeState) {
+    let path = Path::new(DEFAULT_CONFIG_PATH);
+    match open_path_in_file_manager(path) {
+        Ok(()) => state.push_log(format!("已打开软件配置：{DEFAULT_CONFIG_PATH}")),
+        Err(error) => state.push_log(format!("打开软件配置失败：{DEFAULT_CONFIG_PATH}：{error}")),
+    }
+}
+
+fn reload_config(state: &mut RuntimeState) {
+    match AppManifest::load_from_default_path() {
+        Ok(manifest) => {
+            state.selected = manifest
+                .apps
+                .iter()
+                .filter(|app| app.enabled_by_default)
+                .map(|app| app.id.clone())
+                .collect();
+            state.active_category = None;
+            state.current_row = -1;
+            state.install_root = manifest.default_install_root.clone();
+            state.manifest = Ok(manifest);
+            state.push_log("软件配置已重载");
+        }
+        Err(error) => {
+            state.manifest = Err(error);
+            state.selected.clear();
+            state.current_row = -1;
+            state.push_log("软件配置重载失败");
+        }
     }
 }
 
@@ -588,6 +656,49 @@ fn open_homepage_for_current_row(state: &mut RuntimeState, current_row: i32) {
         Ok(_) => state.push_log(format!("已打开官网：{}", row.name)),
         Err(error) => state.push_log(format!("打开官网失败：{}：{error}", row.name)),
     }
+}
+
+fn delete_current_app(state: &mut RuntimeState, current_row: i32) -> bool {
+    let manifest = match &state.manifest {
+        Ok(manifest) => manifest,
+        Err(_) => {
+            state.push_log("删除软件失败：配置未正确读取");
+            return false;
+        }
+    };
+
+    let Some((next_manifest, removed)) =
+        manifest_without_visible_app(manifest, state.active_category.as_deref(), current_row)
+    else {
+        state.push_log("删除软件失败：未选择有效软件行");
+        return false;
+    };
+
+    match next_manifest.save_to_default_path() {
+        Ok(()) => {
+            state.selected.retain(|id| id != &removed.id);
+            state.current_row = -1;
+            state.manifest = Ok(next_manifest);
+            state.push_log(format!("已从配置删除软件：{}", removed.name));
+            true
+        }
+        Err(error) => {
+            state.push_log(format!("删除软件失败：写入配置失败：{error}"));
+            false
+        }
+    }
+}
+
+fn manifest_without_visible_app(
+    manifest: &AppManifest,
+    active_category: Option<&str>,
+    current_row: i32,
+) -> Option<(AppManifest, crate::config::AppEntry)> {
+    let app_id = visible_app_id_by_index(manifest, active_category, current_row)?;
+    let mut next_manifest = manifest.clone();
+    let position = next_manifest.apps.iter().position(|app| app.id == app_id)?;
+    let removed = next_manifest.apps.remove(position);
+    Some((next_manifest, removed))
 }
 
 fn toggle_selected_app_by_visible_row(state: &mut RuntimeState, current_row: i32) -> bool {
@@ -854,6 +965,21 @@ mod tests {
         let selected = super::toggle_selected_app_by_visible_row(&mut state, 0);
         assert!(selected);
         assert!(state.selected.iter().any(|id| id == "chrome"));
+    }
+
+    #[test]
+    fn manifest_remove_uses_visible_category_row() {
+        let manifest =
+            crate::config::AppManifest::load_from_default_path().expect("apps example should load");
+
+        let (next_manifest, removed) =
+            super::manifest_without_visible_app(&manifest, Some("browser"), 1)
+                .expect("browser row should exist");
+
+        assert_eq!(removed.id, "edge");
+        assert_eq!(next_manifest.apps.len(), manifest.apps.len() - 1);
+        assert!(!next_manifest.apps.iter().any(|app| app.id == "edge"));
+        assert!(next_manifest.apps.iter().any(|app| app.id == "chrome"));
     }
 
     #[test]

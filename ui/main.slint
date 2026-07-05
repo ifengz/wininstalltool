@@ -56,6 +56,9 @@ export component AppWindow inherits Window {
     callback download-cache();
     callback validate-config();
     callback detect-installed();
+    callback open-config();
+    callback reload-config();
+    callback delete-current-app();
     callback category-selected(int);
     callback toggle-row-selection(int);
 
@@ -99,6 +102,14 @@ export component AppWindow inherits Window {
                 Button { text: "仅下载缓存"; height: 30px; clicked => { root.download-cache(); } }
                 Button { text: "校验配置"; height: 30px; clicked => { root.validate-config(); } }
                 Button { text: "检测已安装"; height: 30px; clicked => { root.detect-installed(); } }
+                Button { text: "打开软件配置"; height: 30px; clicked => { root.open-config(); } }
+                Button { text: "重载配置"; height: 30px; clicked => { root.reload-config(); } }
+                Button {
+                    text: "删除当前软件";
+                    height: 30px;
+                    enabled: root.current-row >= 0;
+                    clicked => { root.delete-current-app(); }
+                }
 
                 Text {
                     text: "非 Windows 会阻止真实安装";

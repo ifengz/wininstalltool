@@ -1,12 +1,12 @@
 #![allow(dead_code)]
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
 use thiserror::Error;
 
-const DEFAULT_CONFIG_PATH: &str = "config/apps.example.json";
+pub const DEFAULT_CONFIG_PATH: &str = "config/apps.example.json";
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AppManifest {
     pub schema_version: u32,
     pub generated_at: String,
@@ -14,7 +14,7 @@ pub struct AppManifest {
     pub apps: Vec<AppEntry>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AppEntry {
     pub id: String,
     pub name: String,
@@ -28,7 +28,7 @@ pub struct AppEntry {
     pub notes: Option<String>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PackageSource {
     #[serde(rename = "type")]
     pub source_type: String,
@@ -49,7 +49,7 @@ impl PackageSource {
     }
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct InstallSpec {
     pub method: String,
     pub requires_admin: bool,
@@ -61,14 +61,14 @@ pub struct InstallSpec {
     pub fallback_notes: Option<String>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct DetectSpec {
     #[serde(rename = "type")]
     pub detect_type: String,
     pub rules: Vec<DetectRule>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct DetectRule {
     #[serde(rename = "type")]
     pub rule_type: String,
@@ -85,6 +85,14 @@ pub enum LoadConfigError {
     DuplicateAppId(String),
 }
 
+#[derive(Debug, Error)]
+pub enum SaveConfigError {
+    #[error("failed to serialize config json: {0}")]
+    Serialize(#[from] serde_json::Error),
+    #[error("failed to write config: {0}")]
+    Write(#[from] std::io::Error),
+}
+
 impl AppManifest {
     pub fn load_from_default_path() -> Result<Self, LoadConfigError> {
         Self::load_from_path(DEFAULT_CONFIG_PATH)
@@ -95,6 +103,16 @@ impl AppManifest {
         let manifest: Self = serde_json::from_str(&data)?;
         manifest.validate()?;
         Ok(manifest)
+    }
+
+    pub fn save_to_default_path(&self) -> Result<(), SaveConfigError> {
+        self.save_to_path(DEFAULT_CONFIG_PATH)
+    }
+
+    pub fn save_to_path(&self, path: impl AsRef<Path>) -> Result<(), SaveConfigError> {
+        let data = serde_json::to_string_pretty(self)?;
+        fs::write(path, format!("{data}\n"))?;
+        Ok(())
     }
 
     fn validate(&self) -> Result<(), LoadConfigError> {
