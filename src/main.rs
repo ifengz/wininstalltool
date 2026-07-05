@@ -43,7 +43,19 @@ struct RuntimeState {
     task_progress: f32,
     pending_delete_app_id: Option<String>,
     pending_delete_app_name: Option<String>,
+    add_form: AddAppFormState,
     logs: Vec<String>,
+}
+
+#[derive(Clone, Debug, Default)]
+struct AddAppFormState {
+    visible: bool,
+    id: String,
+    name: String,
+    category: String,
+    winget_id: String,
+    homepage: String,
+    detect_path: String,
 }
 
 impl RuntimeState {
@@ -76,6 +88,7 @@ impl RuntimeState {
             task_progress: 0.0,
             pending_delete_app_id: None,
             pending_delete_app_name: None,
+            add_form: AddAppFormState::default(),
             logs: vec!["[startup] 配置已读取，真实安装尚未启用".to_owned()],
         }
     }
@@ -201,13 +214,39 @@ fn wire_callbacks(app: &AppWindow, state: Rc<RefCell<RuntimeState>>) {
 
     let weak = app.as_weak();
     let add_template_state = Rc::clone(&state);
-    app.on_add_app_template(move || {
+    app.on_show_add_app_form(move || {
         let Some(app) = weak.upgrade() else {
             return;
         };
 
         let mut state = add_template_state.borrow_mut();
-        add_app_template(&mut state);
+        show_add_app_form(&mut state);
+        refresh_window(&app, &state);
+    });
+
+    let weak = app.as_weak();
+    let save_add_state = Rc::clone(&state);
+    app.on_save_add_app_form(move || {
+        let Some(app) = weak.upgrade() else {
+            return;
+        };
+
+        let mut state = save_add_state.borrow_mut();
+        sync_add_form(&app, &mut state);
+        save_add_app_form(&mut state);
+        refresh_window(&app, &state);
+    });
+
+    let weak = app.as_weak();
+    let cancel_add_state = Rc::clone(&state);
+    app.on_cancel_add_app_form(move || {
+        let Some(app) = weak.upgrade() else {
+            return;
+        };
+
+        let mut state = cancel_add_state.borrow_mut();
+        state.add_form.visible = false;
+        state.push_log("已取消添加软件");
         refresh_window(&app, &state);
     });
 
@@ -355,6 +394,13 @@ fn refresh_window(app: &AppWindow, state: &RuntimeState) {
             .unwrap_or_default()
             .into(),
     );
+    app.set_add_form_visible(state.add_form.visible);
+    app.set_add_app_id(state.add_form.id.clone().into());
+    app.set_add_app_name(state.add_form.name.clone().into());
+    app.set_add_app_category(state.add_form.category.clone().into());
+    app.set_add_app_winget_id(state.add_form.winget_id.clone().into());
+    app.set_add_app_homepage(state.add_form.homepage.clone().into());
+    app.set_add_app_detect_path(state.add_form.detect_path.clone().into());
     app.set_current_row(state.current_row);
 
     match &state.manifest {
@@ -528,7 +574,29 @@ fn reload_config(state: &mut RuntimeState) {
     }
 }
 
-fn add_app_template(state: &mut RuntimeState) -> bool {
+fn show_add_app_form(state: &mut RuntimeState) {
+    let manifest = match &state.manifest {
+        Ok(manifest) => manifest,
+        Err(_) => {
+            state.push_log("添加软件失败：配置未正确读取");
+            return;
+        }
+    };
+
+    let next_number = next_template_number(manifest);
+    state.add_form = AddAppFormState {
+        visible: true,
+        id: format!("new-app-{next_number}"),
+        name: String::new(),
+        category: "utility".to_owned(),
+        winget_id: String::new(),
+        homepage: String::new(),
+        detect_path: String::new(),
+    };
+    state.push_log("请填写软件名称、winget 包 ID 和检测路径后保存");
+}
+
+fn save_add_app_form(state: &mut RuntimeState) -> bool {
     let manifest = match &state.manifest {
         Ok(manifest) => manifest,
         Err(_) => {
@@ -537,19 +605,35 @@ fn add_app_template(state: &mut RuntimeState) -> bool {
         }
     };
 
-    let mut next_manifest = manifest.clone();
-    let app = new_app_template(&next_manifest);
-    let app_name = app.name.clone();
-    let app_id = app.id.clone();
-    next_manifest.apps.push(app);
+    let app = match app_from_add_form(&state.add_form) {
+        Ok(app) => app,
+        Err(error) => {
+            state.push_log(format!("添加软件失败：{error}"));
+            return false;
+        }
+    };
+
+    let next_manifest = match manifest_with_added_app(manifest, app) {
+        Ok(manifest) => manifest,
+        Err(error) => {
+            state.push_log(format!("添加软件失败：{error}"));
+            return false;
+        }
+    };
+    let app_name = next_manifest
+        .apps
+        .last()
+        .map(|app| app.name.clone())
+        .unwrap_or_else(|| "新软件".to_owned());
 
     match next_manifest.save_to_default_path() {
         Ok(()) => {
             state.manifest = Ok(next_manifest);
             state.active_category = None;
             state.current_row = -1;
+            state.add_form.visible = false;
             state.push_log(format!(
-                "已添加软件模板：{app_name}（{app_id}），请打开配置补全来源、静默参数和检测规则"
+                "已添加软件：{app_name}。默认不勾选，请校验配置和检测规则后再安装。"
             ));
             true
         }
@@ -560,42 +644,99 @@ fn add_app_template(state: &mut RuntimeState) -> bool {
     }
 }
 
-fn new_app_template(manifest: &AppManifest) -> AppEntry {
-    let next_number = next_template_number(manifest);
-    let id = format!("new-app-{next_number}");
-    AppEntry {
-        id: id.clone(),
-        name: format!("新软件 {next_number}"),
-        category: "utility".to_owned(),
-        homepage_url: None,
+fn app_from_add_form(form: &AddAppFormState) -> Result<AppEntry, String> {
+    let id = form.id.trim();
+    let name = form.name.trim();
+    let winget_id = form.winget_id.trim();
+    let detect_path = form.detect_path.trim();
+
+    if id.is_empty() {
+        return Err("id 不能为空".to_owned());
+    }
+    if name.is_empty() {
+        return Err("名称不能为空".to_owned());
+    }
+    if winget_id.is_empty() {
+        return Err("winget 包 ID 不能为空".to_owned());
+    }
+    if detect_path.is_empty() {
+        return Err("检测路径不能为空".to_owned());
+    }
+
+    Ok(AppEntry {
+        id: id.to_owned(),
+        name: name.to_owned(),
+        category: non_empty_or(&form.category, "utility"),
+        homepage_url: optional_trimmed(&form.homepage),
         enabled_by_default: false,
         verification_status: "candidate_medium".to_owned(),
         source: PackageSource {
-            source_type: "direct_url".to_owned(),
-            package_id: None,
-            url: Some("https://example.com/installer.exe".to_owned()),
+            source_type: "winget".to_owned(),
+            package_id: Some(winget_id.to_owned()),
+            url: None,
             repo: None,
             asset_pattern: None,
         },
         install: InstallSpec {
-            method: "direct_exe".to_owned(),
+            method: "winget".to_owned(),
             requires_admin: true,
             supports_custom_path: false,
-            args: None,
-            silent_args: Some(vec!["/S".to_owned()]),
-            direct_silent_args: Some(vec!["/S".to_owned()]),
+            args: Some(winget_install_args(winget_id)),
+            silent_args: None,
+            direct_silent_args: None,
             direct_install_location_arg: None,
-            fallback_notes: Some("模板：请替换下载地址、静默参数和检测规则后再启用".to_owned()),
+            fallback_notes: Some("GUI 添加：请实机验证 winget 安装和检测路径".to_owned()),
         },
         detect: DetectSpec {
             detect_type: "path_exists".to_owned(),
             rules: vec![DetectRule {
                 rule_type: "path_exists".to_owned(),
-                value: "C:\\Program Files\\NewApp\\app.exe".to_owned(),
+                value: detect_path.to_owned(),
             }],
         },
-        notes: Some(format!("模板 {id}：补全后把 enabled_by_default 改为 true")),
+        notes: Some("GUI 添加：默认不勾选，验证后再启用".to_owned()),
+    })
+}
+
+fn manifest_with_added_app(manifest: &AppManifest, app: AppEntry) -> Result<AppManifest, String> {
+    if manifest.apps.iter().any(|existing| existing.id == app.id) {
+        return Err(format!("软件 id 已存在：{}", app.id));
     }
+
+    let mut next_manifest = manifest.clone();
+    next_manifest.apps.push(app);
+    Ok(next_manifest)
+}
+
+fn winget_install_args(package_id: &str) -> Vec<String> {
+    [
+        "install",
+        "--id",
+        package_id,
+        "--exact",
+        "--accept-package-agreements",
+        "--accept-source-agreements",
+        "--silent",
+        "--disable-interactivity",
+        "--no-upgrade",
+    ]
+    .into_iter()
+    .map(str::to_owned)
+    .collect()
+}
+
+fn non_empty_or(value: &str, fallback: &str) -> String {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        fallback.to_owned()
+    } else {
+        trimmed.to_owned()
+    }
+}
+
+fn optional_trimmed(value: &str) -> Option<String> {
+    let trimmed = value.trim();
+    (!trimmed.is_empty()).then(|| trimmed.to_owned())
 }
 
 fn next_template_number(manifest: &AppManifest) -> usize {
@@ -1048,6 +1189,15 @@ fn sync_editable_paths(app: &AppWindow, state: &mut RuntimeState) {
     }
 }
 
+fn sync_add_form(app: &AppWindow, state: &mut RuntimeState) {
+    state.add_form.id = app.get_add_app_id().trim().to_owned();
+    state.add_form.name = app.get_add_app_name().trim().to_owned();
+    state.add_form.category = app.get_add_app_category().trim().to_owned();
+    state.add_form.winget_id = app.get_add_app_winget_id().trim().to_owned();
+    state.add_form.homepage = app.get_add_app_homepage().trim().to_owned();
+    state.add_form.detect_path = app.get_add_app_detect_path().trim().to_owned();
+}
+
 fn open_cache_folder(state: &mut RuntimeState) {
     let path = PathBuf::from(&state.cache_root);
     match std::fs::create_dir_all(&path).and_then(|_| open_path_in_file_manager(&path)) {
@@ -1251,6 +1401,7 @@ mod tests {
             task_progress: 0.0,
             pending_delete_app_id: None,
             pending_delete_app_name: None,
+            add_form: super::AddAppFormState::default(),
             logs: Vec::new(),
         };
 
@@ -1294,6 +1445,7 @@ mod tests {
             task_progress: 0.0,
             pending_delete_app_id: None,
             pending_delete_app_name: None,
+            add_form: super::AddAppFormState::default(),
             logs: Vec::new(),
         };
 
@@ -1318,19 +1470,86 @@ mod tests {
     }
 
     #[test]
-    fn new_app_template_uses_unique_disabled_id() {
-        let mut manifest =
+    fn show_add_form_uses_next_unique_id() {
+        let manifest =
             crate::config::AppManifest::load_from_default_path().expect("apps example should load");
-        manifest.apps.push(super::new_app_template(&manifest));
+        let mut state = super::RuntimeState {
+            manifest: Ok(manifest),
+            selected: Vec::new(),
+            active_category: None,
+            current_row: -1,
+            install_root: "D:\\Apps".to_owned(),
+            cache_root: "cache".to_owned(),
+            task_status: "就绪".to_owned(),
+            task_progress: 0.0,
+            pending_delete_app_id: None,
+            pending_delete_app_name: None,
+            add_form: super::AddAppFormState::default(),
+            logs: Vec::new(),
+        };
 
-        let app = super::new_app_template(&manifest);
+        super::show_add_app_form(&mut state);
 
-        assert_eq!(app.id, "new-app-2");
-        assert_eq!(app.category, "utility");
-        assert!(!app.enabled_by_default);
-        assert_eq!(app.install.method, "direct_exe");
-        assert_eq!(app.source.source_type, "direct_url");
-        assert!(!app.detect.rules.is_empty());
+        assert!(state.add_form.visible);
+        assert_eq!(state.add_form.id, "new-app-1");
+        assert_eq!(state.add_form.category, "utility");
+    }
+
+    #[test]
+    fn e2e_add_real_winget_app_save_reload_and_delete() {
+        let manifest =
+            crate::config::AppManifest::load_from_default_path().expect("apps example should load");
+        let form = super::AddAppFormState {
+            visible: true,
+            id: "sevenzip-e2e".to_owned(),
+            name: "7-Zip E2E".to_owned(),
+            category: "utility".to_owned(),
+            winget_id: "7zip.7zip".to_owned(),
+            homepage: "https://www.7-zip.org/".to_owned(),
+            detect_path: "C:\\Program Files\\7-Zip\\7zFM.exe".to_owned(),
+        };
+
+        let app = super::app_from_add_form(&form).expect("real winget app form should build");
+        let added_manifest =
+            super::manifest_with_added_app(&manifest, app).expect("app should be added");
+        let report = crate::engine::validate_manifest_for_install(&added_manifest);
+        assert!(report.errors.is_empty(), "{:?}", report.errors);
+
+        let path = std::env::temp_dir().join(format!(
+            "wininstalltool-e2e-{}.json",
+            super::log_timestamp()
+        ));
+        added_manifest
+            .save_to_path(&path)
+            .expect("added manifest should save");
+        let reloaded =
+            crate::config::AppManifest::load_from_path(&path).expect("manifest should reload");
+        assert!(reloaded.apps.iter().any(|app| app.id == "sevenzip-e2e"));
+        assert!(
+            !reloaded
+                .apps
+                .iter()
+                .find(|app| app.id == "sevenzip-e2e")
+                .unwrap()
+                .enabled_by_default
+        );
+
+        let (deleted_manifest, removed) = super::manifest_without_app_id(&reloaded, "sevenzip-e2e")
+            .expect("added app should be removable");
+        assert_eq!(removed.source.package_id.as_deref(), Some("7zip.7zip"));
+        deleted_manifest
+            .save_to_path(&path)
+            .expect("deleted manifest should save");
+        let final_manifest =
+            crate::config::AppManifest::load_from_path(&path).expect("manifest should reload");
+        assert!(
+            !final_manifest
+                .apps
+                .iter()
+                .any(|app| app.id == "sevenzip-e2e")
+        );
+
+        let _ = std::fs::remove_file(path);
     }
 
     #[test]

@@ -49,6 +49,13 @@ export component AppWindow inherits Window {
     in property <string> log-text;
     in property <bool> delete-confirm-visible;
     in property <string> delete-confirm-text;
+    in property <bool> add-form-visible;
+    in-out property <string> add-app-id;
+    in-out property <string> add-app-name;
+    in-out property <string> add-app-category;
+    in-out property <string> add-app-winget-id;
+    in-out property <string> add-app-homepage;
+    in-out property <string> add-app-detect-path;
 
     callback choose-install-root();
     callback choose-cache-root();
@@ -58,7 +65,9 @@ export component AppWindow inherits Window {
     callback download-cache();
     callback validate-config();
     callback detect-installed();
-    callback add-app-template();
+    callback show-add-app-form();
+    callback save-add-app-form();
+    callback cancel-add-app-form();
     callback open-config();
     callback reload-config();
     callback request-delete-current-app();
@@ -110,7 +119,7 @@ export component AppWindow inherits Window {
                 Button { text: "仅下载缓存"; height: 30px; clicked => { root.download-cache(); } }
                 Button { text: "校验配置"; height: 30px; clicked => { root.validate-config(); } }
                 Button { text: "检测已安装"; height: 30px; clicked => { root.detect-installed(); } }
-                Button { text: "添加软件"; height: 30px; clicked => { root.add-app-template(); } }
+                Button { text: "添加软件"; height: 30px; clicked => { root.show-add-app-form(); } }
                 Button { text: "打开软件配置"; height: 30px; clicked => { root.open-config(); } }
                 Button { text: "重载配置"; height: 30px; clicked => { root.reload-config(); } }
                 Button {
@@ -361,6 +370,47 @@ export component AppWindow inherits Window {
                             width: 54px;
                             height: 24px;
                             clicked => { root.cancel-delete-current-app(); }
+                        }
+                    }
+
+                    VerticalLayout {
+                        visible: root.add-form-visible;
+                        spacing: 6px;
+
+                        HorizontalLayout {
+                            height: 26px;
+                            spacing: 8px;
+
+                            Text {
+                                text: "添加软件";
+                                font-size: 12px;
+                                font-weight: 700;
+                                width: 64px;
+                                vertical-alignment: center;
+                            }
+
+                            LineEdit { text <=> root.add-app-id; placeholder-text: "id"; width: 120px; height: 24px; }
+                            LineEdit { text <=> root.add-app-name; placeholder-text: "名称"; width: 150px; height: 24px; }
+                            LineEdit { text <=> root.add-app-category; placeholder-text: "分类"; width: 110px; height: 24px; }
+                            LineEdit { text <=> root.add-app-winget-id; placeholder-text: "winget 包 ID"; width: 190px; height: 24px; }
+                        }
+
+                        HorizontalLayout {
+                            height: 26px;
+                            spacing: 8px;
+
+                            Text {
+                                text: "检测路径";
+                                font-size: 12px;
+                                width: 64px;
+                                vertical-alignment: center;
+                            }
+
+                            LineEdit { text <=> root.add-app-detect-path; placeholder-text: "C:\\Program Files\\App\\app.exe"; width: 330px; height: 24px; }
+                            LineEdit { text <=> root.add-app-homepage; placeholder-text: "官网，可空"; width: 250px; height: 24px; }
+                            Rectangle { horizontal-stretch: 1; }
+                            Button { text: "保存"; width: 54px; height: 24px; clicked => { root.save-add-app-form(); } }
+                            Button { text: "取消"; width: 54px; height: 24px; clicked => { root.cancel-add-app-form(); } }
                         }
                     }
 
