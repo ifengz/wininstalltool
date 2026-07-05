@@ -1,0 +1,435 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-04",
+  "default_install_root": "C:\\Program Files\\CompanyApps",
+  "apps": [
+    {
+      "id": "chrome",
+      "name": "Google Chrome",
+      "category": "browser",
+      "homepage_url": "https://www.google.com/chrome/",
+      "enabled_by_default": true,
+      "verification_status": "candidate_high",
+      "source": {
+        "type": "winget",
+        "package_id": "Google.Chrome"
+      },
+      "install": {
+        "method": "winget",
+        "requires_admin": true,
+        "supports_custom_path": false,
+        "args": [
+          "install",
+          "--exact",
+          "--id",
+          "Google.Chrome",
+          "--silent",
+          "--accept-package-agreements",
+          "--accept-source-agreements",
+          "--disable-interactivity",
+          "--no-upgrade"
+        ],
+        "fallback_notes": "Enterprise MSI can use: msiexec /i <installer> /qn /norestart"
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "Google Chrome"
+          },
+          {
+            "type": "path_exists",
+            "value": "%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe"
+          }
+        ]
+      },
+      "notes": "Prefer Chrome Enterprise MSI for offline packaging later."
+    },
+    {
+      "id": "edge",
+      "name": "Microsoft Edge",
+      "category": "browser",
+      "homepage_url": "https://www.microsoft.com/edge/business/download",
+      "enabled_by_default": true,
+      "verification_status": "candidate_medium",
+      "source": {
+        "type": "preinstalled_or_winget",
+        "package_id": "Microsoft.Edge"
+      },
+      "install": {
+        "method": "winget_if_missing",
+        "requires_admin": true,
+        "supports_custom_path": false,
+        "args": [
+          "install",
+          "--exact",
+          "--id",
+          "Microsoft.Edge",
+          "--silent",
+          "--accept-package-agreements",
+          "--accept-source-agreements",
+          "--disable-interactivity",
+          "--no-upgrade"
+        ],
+        "fallback_notes": "Edge for Business MSI can use standard MSI quiet install after installer is downloaded."
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "Microsoft Edge"
+          },
+          {
+            "type": "path_exists",
+            "value": "%ProgramFiles(x86)%\\Microsoft\\Edge\\Application\\msedge.exe"
+          },
+          {
+            "type": "path_exists",
+            "value": "%ProgramFiles%\\Microsoft\\Edge\\Application\\msedge.exe"
+          }
+        ]
+      },
+      "notes": "First action should be detection because Edge is usually already present."
+    },
+    {
+      "id": "vivaldi",
+      "name": "Vivaldi",
+      "category": "browser",
+      "homepage_url": "https://vivaldi.com/download/",
+      "enabled_by_default": true,
+      "verification_status": "candidate_high",
+      "source": {
+        "type": "winget",
+        "package_id": "Vivaldi.Vivaldi"
+      },
+      "install": {
+        "method": "winget",
+        "requires_admin": true,
+        "supports_custom_path": true,
+        "args": [
+          "install",
+          "--exact",
+          "--id",
+          "Vivaldi.Vivaldi",
+          "--silent",
+          "--accept-package-agreements",
+          "--accept-source-agreements",
+          "--disable-interactivity",
+          "--no-upgrade"
+        ],
+        "direct_silent_args": [
+          "--vivaldi-silent",
+          "--do-not-launch-chrome",
+          "--system-level"
+        ],
+        "direct_install_location_arg": "--vivaldi-install-dir=\"{install_dir}\""
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_product_code",
+            "value": "Vivaldi"
+          },
+          {
+            "type": "path_exists",
+            "value": "%ProgramFiles%\\Vivaldi\\Application\\vivaldi.exe"
+          }
+        ]
+      },
+      "notes": "Winget manifest exposes Vivaldi-specific silent and install-location switches."
+    },
+    {
+      "id": "feishu",
+      "name": "飞书",
+      "category": "messaging",
+      "homepage_url": "https://www.feishu.cn/download",
+      "enabled_by_default": true,
+      "verification_status": "candidate_high",
+      "source": {
+        "type": "direct_url",
+        "url": "https://www.feishu.cn/download"
+      },
+      "install": {
+        "method": "direct_exe",
+        "requires_admin": false,
+        "supports_custom_path": false,
+        "silent_args": [
+          "--command=quiet_install"
+        ],
+        "fallback_notes": "Feishu also documents MSI deployment; use MSI if company deployment package is available."
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "Feishu"
+          },
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "飞书"
+          },
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "Lark"
+          }
+        ]
+      },
+      "notes": "Official help documents --command=quiet_install; exact installed path must be discovered on Windows."
+    },
+    {
+      "id": "notepadpp",
+      "name": "Notepad++",
+      "category": "developer_tool",
+      "homepage_url": "https://notepad-plus-plus.org/downloads/",
+      "enabled_by_default": true,
+      "verification_status": "candidate_high",
+      "source": {
+        "type": "github_release",
+        "repo": "notepad-plus-plus/notepad-plus-plus",
+        "asset_pattern": "Installer.x64.msi"
+      },
+      "install": {
+        "method": "msi",
+        "requires_admin": true,
+        "supports_custom_path": false,
+        "args": [
+          "/qn",
+          "/norestart"
+        ],
+        "fallback_notes": "NSIS EXE installer can use /S if MSI is unavailable."
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "Notepad++"
+          },
+          {
+            "type": "path_exists",
+            "value": "%ProgramFiles%\\Notepad++\\notepad++.exe"
+          }
+        ]
+      },
+      "notes": "Use GitHub release MSI to avoid relying on website scraping."
+    },
+    {
+      "id": "wps",
+      "name": "WPS Office",
+      "category": "office",
+      "homepage_url": "https://www.wps.cn/product/wpswindows",
+      "enabled_by_default": true,
+      "verification_status": "candidate_medium",
+      "source": {
+        "type": "winget",
+        "package_id": "Kingsoft.WPSOffice"
+      },
+      "install": {
+        "method": "winget",
+        "requires_admin": true,
+        "supports_custom_path": false,
+        "args": [
+          "install",
+          "--exact",
+          "--id",
+          "Kingsoft.WPSOffice",
+          "--silent",
+          "--accept-package-agreements",
+          "--accept-source-agreements",
+          "--disable-interactivity",
+          "--no-upgrade"
+        ],
+        "fallback_notes": "Direct installer switches were not confirmed in AnySearch pass."
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "WPS Office"
+          },
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "WPS"
+          }
+        ]
+      },
+      "notes": "Bundle behavior must be tested before default rollout."
+    },
+    {
+      "id": "dingtalk",
+      "name": "钉钉",
+      "category": "messaging",
+      "homepage_url": "https://page.dingtalk.com/wow/dingtalk/act/download",
+      "enabled_by_default": true,
+      "verification_status": "candidate_medium",
+      "source": {
+        "type": "winget",
+        "package_id": "Alibaba.DingTalk.Mainland"
+      },
+      "install": {
+        "method": "winget",
+        "requires_admin": true,
+        "supports_custom_path": false,
+        "args": [
+          "install",
+          "--exact",
+          "--id",
+          "Alibaba.DingTalk.Mainland",
+          "--silent",
+          "--accept-package-agreements",
+          "--accept-source-agreements",
+          "--disable-interactivity",
+          "--no-upgrade"
+        ],
+        "fallback_notes": "Use Mainland package id to avoid Global/Mainland mismatch."
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "DingTalk"
+          },
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "钉钉"
+          }
+        ]
+      },
+      "notes": "Winget Mainland/Global distinction must be tested on target machines."
+    },
+    {
+      "id": "wechat",
+      "name": "微信",
+      "category": "messaging",
+      "homepage_url": "https://pc.weixin.qq.com/",
+      "enabled_by_default": true,
+      "verification_status": "candidate_medium",
+      "source": {
+        "type": "winget",
+        "package_id": "Tencent.WeChat.Universal"
+      },
+      "install": {
+        "method": "winget",
+        "requires_admin": true,
+        "supports_custom_path": false,
+        "args": [
+          "install",
+          "--exact",
+          "--id",
+          "Tencent.WeChat.Universal",
+          "--silent",
+          "--accept-package-agreements",
+          "--accept-source-agreements",
+          "--disable-interactivity",
+          "--no-upgrade"
+        ],
+        "fallback_notes": "Winget evidence shows Nullsoft package; direct installer silent args still need local confirmation."
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_product_code",
+            "value": "WeChat"
+          },
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "WeChat"
+          },
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "微信"
+          }
+        ]
+      },
+      "notes": "Winget update loop issue existed historically; verify current target behavior."
+    },
+    {
+      "id": "huorong",
+      "name": "火绒安全",
+      "category": "security",
+      "homepage_url": "https://www.huorong.cn/person",
+      "enabled_by_default": true,
+      "verification_status": "candidate_medium",
+      "source": {
+        "type": "direct_url",
+        "url": "https://www.huorong.cn/person"
+      },
+      "install": {
+        "method": "direct_exe",
+        "requires_admin": true,
+        "supports_custom_path": false,
+        "silent_args": [
+          "/S"
+        ],
+        "fallback_notes": "Huorong deployment FAQ mentions /S for endpoint deployment; personal installer must be tested separately."
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "火绒"
+          },
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "Huorong"
+          }
+        ]
+      },
+      "notes": "Test in isolation because security software can interfere with installer automation."
+    },
+    {
+      "id": "honeyview",
+      "name": "Honeyview",
+      "category": "image_viewer",
+      "homepage_url": "https://www.bandisoft.com/honeyview/",
+      "enabled_by_default": true,
+      "verification_status": "candidate_medium",
+      "source": {
+        "type": "winget",
+        "package_id": "Bandisoft.Honeyview"
+      },
+      "install": {
+        "method": "winget",
+        "requires_admin": true,
+        "supports_custom_path": false,
+        "args": [
+          "install",
+          "--exact",
+          "--id",
+          "Bandisoft.Honeyview",
+          "--silent",
+          "--accept-package-agreements",
+          "--accept-source-agreements",
+          "--disable-interactivity",
+          "--no-upgrade"
+        ],
+        "direct_silent_args": [
+          "/S"
+        ],
+        "fallback_notes": "Honeyview updates are discontinued; consider BandiView later if user approves."
+      },
+      "detect": {
+        "type": "any",
+        "rules": [
+          {
+            "type": "registry_uninstall_display_name_contains",
+            "value": "Honeyview"
+          },
+          {
+            "type": "path_exists",
+            "value": "%ProgramFiles%\\Honeyview\\Honeyview.exe"
+          }
+        ]
+      },
+      "notes": "Silent switch /S comes from third-party deployment guide and requires local confirmation."
+    }
+  ]
+}

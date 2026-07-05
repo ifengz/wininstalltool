@@ -1,0 +1,15 @@
+[package]
+name = "wininstalltool"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rfd = "0.17.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+slint = "1.17.0"
+thiserror = "2"
+webbrowser = "1.2.1"
+
+[build-dependencies]
+slint-build = "1.17.0"

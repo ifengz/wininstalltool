@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900">
+  <rect width="1440" height="900" fill="#f7f8fb"/>
+  <rect x="12" y="12" width="1416" height="876" rx="4" fill="#ffffff" stroke="#d9dee8"/>
+  <rect x="12" y="12" width="1416" height="38" fill="#f1f4f8"/>
+  <line x1="12" y1="50" x2="1428" y2="50" stroke="#d9dee8"/>
+  <text x="24" y="36" font-family="Segoe UI, Arial" font-size="14" font-weight="700" fill="#1f2937">WinInstallTool - egui light reference</text>
+
+  <rect x="28" y="70" width="320" height="794" rx="4" fill="#fbfcfe" stroke="#d9dee8"/>
+  <text x="44" y="100" font-family="Segoe UI, Arial" font-size="15" font-weight="700" fill="#111827">Profiles</text>
+  <rect x="44" y="120" width="276" height="32" rx="4" fill="#eef4ff" stroke="#b8cdf8"/>
+  <text x="56" y="142" font-family="Segoe UI, Arial" font-size="13" font-weight="700" fill="#1d4ed8">Office Standard</text>
+
+  <text x="44" y="198" font-family="Segoe UI, Arial" font-size="15" font-weight="700" fill="#111827">Install path</text>
+  <rect x="44" y="218" width="276" height="32" rx="4" fill="#ffffff" stroke="#cfd6e2"/>
+  <text x="56" y="240" font-family="Consolas, monospace" font-size="12" fill="#374151">C:\Program Files\CompanyApps</text>
+
+  <text x="44" y="288" font-family="Segoe UI, Arial" font-size="15" font-weight="700" fill="#111827">Actions</text>
+  <rect x="44" y="308" width="130" height="34" rx="4" fill="#2563eb"/>
+  <text x="76" y="330" font-family="Segoe UI, Arial" font-size="13" font-weight="700" fill="#ffffff">Start</text>
+  <rect x="190" y="308" width="130" height="34" rx="4" fill="#ffffff" stroke="#cfd6e2"/>
+  <text x="214" y="330" font-family="Segoe UI, Arial" font-size="13" fill="#1f2937">Download</text>
+  <rect x="44" y="356" width="276" height="34" rx="4" fill="#ffffff" stroke="#cfd6e2"/>
+  <text x="111" y="378" font-family="Segoe UI, Arial" font-size="13" fill="#1f2937">Validate Cache</text>
+
+  <text x="44" y="448" font-family="Segoe UI, Arial" font-size="15" font-weight="700" fill="#111827">Summary</text>
+  <text x="44" y="480" font-family="Consolas, monospace" font-size="13" fill="#374151">Selected: 12</text>
+  <text x="44" y="508" font-family="Consolas, monospace" font-size="13" fill="#374151">Cached:   10</text>
+  <text x="44" y="536" font-family="Consolas, monospace" font-size="13" fill="#b45309">Missing:  2</text>
+  <text x="44" y="564" font-family="Consolas, monospace" font-size="13" fill="#15803d">Passed:   0</text>
+
+  <rect x="368" y="70" width="672" height="794" rx="4" fill="#ffffff" stroke="#d9dee8"/>
+  <text x="388" y="100" font-family="Segoe UI, Arial" font-size="15" font-weight="700" fill="#111827">Software table</text>
+  <line x1="388" y1="126" x2="1018" y2="126" stroke="#d9dee8"/>
+  <text x="396" y="151" font-family="Segoe UI, Arial" font-size="12" font-weight="700" fill="#64748b">x</text>
+  <text x="444" y="151" font-family="Segoe UI, Arial" font-size="12" font-weight="700" fill="#64748b">Name</text>
+  <text x="674" y="151" font-family="Segoe UI, Arial" font-size="12" font-weight="700" fill="#64748b">Source</text>
+  <text x="800" y="151" font-family="Segoe UI, Arial" font-size="12" font-weight="700" fill="#64748b">Cache</text>
+  <text x="910" y="151" font-family="Segoe UI, Arial" font-size="12" font-weight="700" fill="#64748b">Status</text>
+
+  <g font-family="Segoe UI, Arial" font-size="13">
+    <rect x="388" y="168" width="630" height="36" fill="#f8fafc"/>
+    <text x="396" y="191" fill="#111827">☑</text><text x="444" y="191" fill="#111827">7-Zip</text><text x="674" y="191" fill="#475569">winget</text><text x="800" y="191" fill="#15803d">ready</text><text x="910" y="191" fill="#15803d">selected</text>
+    <rect x="388" y="210" width="630" height="36" fill="#ffffff"/>
+    <text x="396" y="233" fill="#111827">☑</text><text x="444" y="233" fill="#111827">Chrome</text><text x="674" y="233" fill="#475569">direct_url</text><text x="800" y="233" fill="#15803d">ready</text><text x="910" y="233" fill="#15803d">selected</text>
+    <rect x="388" y="252" width="630" height="36" fill="#f8fafc"/>
+    <text x="396" y="275" fill="#111827">☐</text><text x="444" y="275" fill="#111827">Git</text><text x="674" y="275" fill="#475569">github</text><text x="800" y="275" fill="#b45309">missing</text><text x="910" y="275" fill="#64748b">off</text>
+    <rect x="388" y="294" width="630" height="36" fill="#ffffff"/>
+    <text x="396" y="317" fill="#111827">☑</text><text x="444" y="317" fill="#111827">Office Runtime</text><text x="674" y="317" fill="#475569">local</text><text x="800" y="317" fill="#15803d">ready</text><text x="910" y="317" fill="#2563eb">queued</text>
+  </g>
+
+  <rect x="388" y="720" width="630" height="120" rx="4" fill="#fbfcfe" stroke="#d9dee8"/>
+  <text x="404" y="748" font-family="Consolas, monospace" font-size="12" fill="#15803d">plan: detect installed apps</text>
+  <text x="404" y="774" font-family="Consolas, monospace" font-size="12" fill="#15803d">plan: verify local cache</text>
+  <text x="404" y="800" font-family="Consolas, monospace" font-size="12" fill="#b45309">plan: download missing installers</text>
+
+  <rect x="1060" y="70" width="348" height="794" rx="4" fill="#fbfcfe" stroke="#d9dee8"/>
+  <text x="1080" y="100" font-family="Segoe UI, Arial" font-size="15" font-weight="700" fill="#111827">Details</text>
+  <text x="1080" y="138" font-family="Segoe UI, Arial" font-size="13" fill="#64748b">Selected app</text>
+  <text x="1080" y="164" font-family="Segoe UI, Arial" font-size="18" font-weight="700" fill="#111827">Chrome</text>
+  <text x="1080" y="204" font-family="Consolas, monospace" font-size="12" fill="#374151">source: direct_url</text>
+  <text x="1080" y="232" font-family="Consolas, monospace" font-size="12" fill="#374151">silent: /silent /install</text>
+  <text x="1080" y="260" font-family="Consolas, monospace" font-size="12" fill="#374151">detect: registry key</text>
+  <line x1="1080" y1="298" x2="1388" y2="298" stroke="#d9dee8"/>
+  <text x="1080" y="336" font-family="Segoe UI, Arial" font-size="15" font-weight="700" fill="#111827">Live log</text>
+  <rect x="1080" y="356" width="308" height="160" rx="4" fill="#ffffff" stroke="#d9dee8"/>
+  <text x="1096" y="386" font-family="Consolas, monospace" font-size="12" fill="#15803d">20:47 cache hit</text>
+  <text x="1096" y="414" font-family="Consolas, monospace" font-size="12" fill="#2563eb">20:47 waiting</text>
+  <text x="1096" y="442" font-family="Consolas, monospace" font-size="12" fill="#2563eb">20:48 queued</text>
+</svg>

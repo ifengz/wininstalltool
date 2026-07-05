@@ -1,0 +1,11 @@
+doc/core/task_plan.md
+doc/core/progress.md
+doc/core/findings.md
+doc/core/lessons.md
+doc/test/
+.DS_Store
+doc/.DS_Store
+target/
+cache/
+logs/
+drivers/packs/

@@ -1,0 +1,229 @@
+import {
+    Button,
+    LineEdit,
+    StandardTableView,
+    TextEdit,
+} from "std-widgets.slint";
+
+component PhaseRow inherits Rectangle {
+    in property <string> label;
+    in property <bool> done;
+    height: 22px;
+
+    HorizontalLayout {
+        spacing: 8px;
+        Text {
+            text: done ? "●" : "●";
+            font-size: 12px;
+            color: done ? #2f3437 : #d7d9dd;
+            width: 18px;
+            vertical-alignment: center;
+            horizontal-alignment: center;
+        }
+        Text {
+            text: label;
+            font-size: 12px;
+            color: done ? #2f3437 : #787774;
+            vertical-alignment: center;
+        }
+    }
+}
+
+export component AppWindow inherits Window {
+    title: "WinInstallTool";
+    width: 1180px;
+    height: 760px;
+
+    in-out property <string> install-root;
+    in property <int> selected-count;
+    in property <int> admin-count;
+    in property <int> verification-count;
+    in property <[string]> category-labels;
+    in property <[TableColumn]> table-columns;
+    in property <[[StandardListViewItem]]> table-rows;
+    in-out property <int> current-row: -1;
+    in property <string> log-text;
+
+    callback choose-install-root();
+    callback open-homepage();
+    callback start-install();
+    callback download-cache();
+    callback validate-config();
+    callback detect-installed();
+    callback category-selected(int);
+
+    background: #f7f6f3;
+
+    HorizontalLayout {
+        padding: 16px;
+        spacing: 12px;
+
+        Rectangle {
+            width: 246px;
+            border-radius: 3px;
+            border-width: 1px;
+            border-color: #e3e3df;
+            background: #ffffff;
+
+            VerticalLayout {
+                padding: 16px;
+                spacing: 10px;
+
+                Text {
+                    text: "Office Standard";
+                    font-size: 17px;
+                    font-weight: 700;
+                    color: #111111;
+                    height: 28px;
+                    vertical-alignment: center;
+                }
+
+                Text {
+                    text: "10 个优先软件，顺序执行并写日志";
+                    font-size: 13px;
+                    color: #787774;
+                    height: 22px;
+                    vertical-alignment: center;
+                }
+
+                Rectangle { height: 8px; }
+
+                Button { text: "开始安装"; height: 30px; clicked => { root.start-install(); } }
+                Button { text: "仅下载缓存"; height: 30px; clicked => { root.download-cache(); } }
+                Button { text: "校验配置"; height: 30px; clicked => { root.validate-config(); } }
+                Button { text: "检测已安装"; height: 30px; clicked => { root.detect-installed(); } }
+
+                Text {
+                    text: "非 Windows 会阻止真实安装";
+                    font-size: 12px;
+                    color: #787774;
+                    height: 24px;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+
+                Rectangle { height: 8px; }
+
+                PhaseRow { label: "配置读取"; done: true; }
+                PhaseRow { label: "安装计划预览"; done: true; }
+                PhaseRow { label: "真实安装执行"; done: false; }
+                PhaseRow { label: "驱动安装"; done: false; }
+
+                Text {
+                    text: "日志";
+                    font-size: 13px;
+                    font-weight: 700;
+                    color: #111111;
+                    height: 24px;
+                    vertical-alignment: center;
+                }
+
+                TextEdit {
+                    text: root.log-text;
+                    read-only: true;
+                    height: 160px;
+                }
+            }
+        }
+
+        Rectangle {
+            border-radius: 3px;
+            border-width: 1px;
+            border-color: #e3e3df;
+            background: #ffffff;
+
+            VerticalLayout {
+                padding: 16px;
+                spacing: 10px;
+
+                HorizontalLayout {
+                    height: 32px;
+                    spacing: 10px;
+
+                    Text {
+                        text: "安装中心";
+                        font-size: 20px;
+                        font-weight: 700;
+                        color: #111111;
+                        width: 96px;
+                        vertical-alignment: center;
+                    }
+
+                    Text {
+                        text: "默认安装路径";
+                        font-size: 13px;
+                        color: #787774;
+                        width: 88px;
+                        vertical-alignment: center;
+                    }
+
+                    LineEdit {
+                        text <=> root.install-root;
+                        width: 320px;
+                        height: 28px;
+                    }
+
+                    Button {
+                        text: "选择...";
+                        width: 66px;
+                        height: 28px;
+                        clicked => { root.choose-install-root(); }
+                    }
+
+                    Rectangle { horizontal-stretch: 1; }
+
+                    Text {
+                        text: "已选 " + root.selected-count;
+                        font-size: 13px;
+                        color: #2f3437;
+                        width: 64px;
+                        vertical-alignment: center;
+                        horizontal-alignment: right;
+                    }
+                    Text {
+                        text: "需管理员 " + root.admin-count;
+                        font-size: 13px;
+                        color: #787774;
+                        width: 82px;
+                        vertical-alignment: center;
+                        horizontal-alignment: right;
+                    }
+                    Text {
+                        text: "待实测 " + root.verification-count;
+                        font-size: 13px;
+                        color: #787774;
+                        width: 74px;
+                        vertical-alignment: center;
+                        horizontal-alignment: right;
+                    }
+                }
+
+                HorizontalLayout {
+                    height: 28px;
+                    spacing: 8px;
+                    for category[index] in root.category-labels: Button {
+                        text: category;
+                        height: 26px;
+                        clicked => { root.category-selected(index); }
+                    }
+                    Rectangle { horizontal-stretch: 1; }
+                    Button {
+                        text: "打开官网";
+                        width: 76px;
+                        height: 26px;
+                        enabled: root.current-row >= 0;
+                        clicked => { root.open-homepage(); }
+                    }
+                }
+
+                StandardTableView {
+                    columns: root.table-columns;
+                    rows: root.table-rows;
+                    current-row <=> root.current-row;
+                    horizontal-stretch: 1;
+                    vertical-stretch: 1;
+                }
+            }
+        }
+    }
+}

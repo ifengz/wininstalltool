@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900">
+  <rect width="1440" height="900" fill="#f6f7f9"/>
+  <rect x="0" y="0" width="1440" height="56" fill="#ffffff"/>
+  <line x1="0" y1="56" x2="1440" y2="56" stroke="#e3e7ee"/>
+  <text x="28" y="36" font-family="Inter, Segoe UI, Arial" font-size="18" font-weight="700" fill="#111827">Company Installer</text>
+  <rect x="1170" y="16" width="112" height="28" rx="6" fill="#111827"/>
+  <text x="1200" y="35" font-family="Inter, Segoe UI, Arial" font-size="12" font-weight="700" fill="#ffffff">Start</text>
+  <rect x="1296" y="16" width="112" height="28" rx="6" fill="#ffffff" stroke="#d8dee8"/>
+  <text x="1322" y="35" font-family="Inter, Segoe UI, Arial" font-size="12" fill="#28313f">Download</text>
+
+  <rect x="0" y="57" width="248" height="843" fill="#ffffff"/>
+  <line x1="248" y1="57" x2="248" y2="900" stroke="#e3e7ee"/>
+  <text x="28" y="104" font-family="Inter, Segoe UI, Arial" font-size="12" font-weight="700" fill="#697386">PROFILE</text>
+  <rect x="24" y="124" width="200" height="42" rx="7" fill="#f1f4f8"/>
+  <text x="42" y="151" font-family="Inter, Segoe UI, Arial" font-size="14" fill="#111827">Office Standard</text>
+  <text x="28" y="214" font-family="Inter, Segoe UI, Arial" font-size="12" font-weight="700" fill="#697386">CATEGORIES</text>
+  <rect x="24" y="234" width="200" height="38" rx="7" fill="#111827"/>
+  <text x="44" y="258" font-family="Inter, Segoe UI, Arial" font-size="14" fill="#ffffff">All software</text>
+  <text x="44" y="306" font-family="Inter, Segoe UI, Arial" font-size="14" fill="#475467">Browsers</text>
+  <text x="44" y="350" font-family="Inter, Segoe UI, Arial" font-size="14" fill="#475467">Office</text>
+  <text x="44" y="394" font-family="Inter, Segoe UI, Arial" font-size="14" fill="#475467">Runtime</text>
+  <text x="44" y="438" font-family="Inter, Segoe UI, Arial" font-size="14" fill="#475467">Developer tools</text>
+  <text x="44" y="482" font-family="Inter, Segoe UI, Arial" font-size="14" fill="#475467">Drivers</text>
+
+  <text x="288" y="108" font-family="Inter, Segoe UI, Arial" font-size="28" font-weight="800" fill="#111827">Install Center</text>
+  <text x="288" y="136" font-family="Inter, Segoe UI, Arial" font-size="14" fill="#697386">Select apps, verify cache, then install silently with logs.</text>
+  <rect x="288" y="166" width="472" height="44" rx="7" fill="#ffffff" stroke="#d8dee8"/>
+  <text x="306" y="194" font-family="Inter, Segoe UI, Arial" font-size="14" fill="#475467">Default path: C:\Program Files\CompanyApps</text>
+  <rect x="780" y="166" width="144" height="44" rx="7" fill="#ffffff" stroke="#d8dee8"/>
+  <text x="810" y="194" font-family="Inter, Segoe UI, Arial" font-size="14" fill="#475467">Refresh</text>
+
+  <rect x="288" y="240" width="804" height="574" rx="8" fill="#ffffff" stroke="#d8dee8"/>
+  <line x1="288" y1="296" x2="1092" y2="296" stroke="#e8edf3"/>
+  <text x="324" y="275" font-family="Inter, Segoe UI, Arial" font-size="12" font-weight="700" fill="#697386">APP</text>
+  <text x="598" y="275" font-family="Inter, Segoe UI, Arial" font-size="12" font-weight="700" fill="#697386">SOURCE</text>
+  <text x="748" y="275" font-family="Inter, Segoe UI, Arial" font-size="12" font-weight="700" fill="#697386">CACHE</text>
+  <text x="894" y="275" font-family="Inter, Segoe UI, Arial" font-size="12" font-weight="700" fill="#697386">STATUS</text>
+  <g font-family="Inter, Segoe UI, Arial" font-size="14" fill="#111827">
+    <circle cx="314" cy="334" r="8" fill="#111827"/><text x="342" y="339">7-Zip</text>
+    <text x="598" y="339" fill="#475467">winget</text><text x="748" y="339" fill="#16a34a">ready</text>
+    <rect x="894" y="318" width="86" height="28" rx="14" fill="#e9f8ef"/><text x="914" y="337" fill="#16803b">selected</text>
+    <line x1="306" y1="362" x2="1074" y2="362" stroke="#eef2f6"/>
+    <circle cx="314" cy="400" r="8" fill="#111827"/><text x="342" y="405">Chrome</text>
+    <text x="598" y="405" fill="#475467">direct_url</text><text x="748" y="405" fill="#16a34a">ready</text>
+    <rect x="894" y="384" width="72" height="28" rx="14" fill="#e9f8ef"/><text x="914" y="403" fill="#16803b">ready</text>
+    <line x1="306" y1="428" x2="1074" y2="428" stroke="#eef2f6"/>
+    <circle cx="314" cy="466" r="8" fill="#ffffff" stroke="#98a2b3"/><text x="342" y="471">Git</text>
+    <text x="598" y="471" fill="#475467">github</text><text x="748" y="471" fill="#b45309">download</text>
+    <rect x="894" y="450" width="110" height="28" rx="14" fill="#fff7ed"/><text x="914" y="469" fill="#b45309">needs cache</text>
+    <line x1="306" y1="494" x2="1074" y2="494" stroke="#eef2f6"/>
+    <circle cx="314" cy="532" r="8" fill="#111827"/><text x="342" y="537">Office Runtime</text>
+    <text x="598" y="537" fill="#475467">local</text><text x="748" y="537" fill="#16a34a">ready</text>
+    <rect x="894" y="516" width="86" height="28" rx="14" fill="#eef2ff"/><text x="914" y="535" fill="#3730a3">queued</text>
+  </g>
+
+  <rect x="1120" y="240" width="280" height="574" rx="8" fill="#111827"/>
+  <text x="1144" y="276" font-family="Inter, Segoe UI, Arial" font-size="16" font-weight="700" fill="#ffffff">Run Log</text>
+  <text x="1144" y="314" font-family="JetBrains Mono, Consolas, monospace" font-size="12" fill="#a7f3d0">20:47 cache ok: 7zip</text>
+  <text x="1144" y="342" font-family="JetBrains Mono, Consolas, monospace" font-size="12" fill="#a7f3d0">20:47 cache ok: chrome</text>
+  <text x="1144" y="370" font-family="JetBrains Mono, Consolas, monospace" font-size="12" fill="#fde68a">20:48 download: git</text>
+  <text x="1144" y="398" font-family="JetBrains Mono, Consolas, monospace" font-size="12" fill="#bfdbfe">20:48 queued: runtime</text>
+  <rect x="1144" y="738" width="232" height="42" rx="7" fill="#ffffff"/>
+  <text x="1204" y="765" font-family="Inter, Segoe UI, Arial" font-size="14" font-weight="700" fill="#111827">Open Logs</text>
+</svg>
