@@ -10,7 +10,9 @@ Small Windows installer tool for company computer setup.
 - Reads `config/apps.example.json`.
 - Shows first-batch software candidates and verification state.
 - Default install path can be edited or chosen with a folder picker; it only applies to software that supports custom paths.
-- Does not execute real install commands yet.
+- Runs selected install commands on Windows through the configured `winget`, MSI, or cached EXE plan.
+- Downloads cache for fixed `.exe`/`.msi` URLs and GitHub latest release assets.
+- Blocks real installation on non-Windows systems.
 
 ## Local Development
 

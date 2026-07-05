@@ -1,4 +1,5 @@
 use crate::config::{AppEntry, AppManifest, DetectRule};
+use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Default)]
@@ -70,6 +71,28 @@ pub struct CommandResult {
     pub stderr: String,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DownloadStatus {
+    Downloaded,
+    Skipped,
+    Failed,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DownloadResult {
+    pub app_id: String,
+    pub app_name: String,
+    pub status: DownloadStatus,
+    pub message: String,
+    pub path: Option<PathBuf>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct DownloadRequest {
+    url: String,
+    file_name: String,
+}
+
 pub fn build_install_command(
     app: &AppEntry,
     install_root: &str,
@@ -126,6 +149,26 @@ pub fn run_install_command(command: &InstallCommand) -> CommandResult {
             stdout: String::new(),
             stderr: "real installation is only supported on Windows".to_owned(),
         }
+    }
+}
+
+pub fn download_cache_for_app(app: &AppEntry, cache_root: &Path) -> DownloadResult {
+    match build_download_request(app) {
+        DownloadRequestPlan::Ready(request) => download_to_cache(app, cache_root, request),
+        DownloadRequestPlan::Skipped(message) => DownloadResult {
+            app_id: app.id.clone(),
+            app_name: app.name.clone(),
+            status: DownloadStatus::Skipped,
+            message,
+            path: None,
+        },
+        DownloadRequestPlan::Failed(message) => DownloadResult {
+            app_id: app.id.clone(),
+            app_name: app.name.clone(),
+            status: DownloadStatus::Failed,
+            message,
+            path: None,
+        },
     }
 }
 
@@ -217,6 +260,185 @@ fn find_cached_installer(
                     })
         })
         .ok_or_else(|| format!("cache installer not found under {}", app_cache.display()))
+}
+
+enum DownloadRequestPlan {
+    Ready(DownloadRequest),
+    Skipped(String),
+    Failed(String),
+}
+
+fn build_download_request(app: &AppEntry) -> DownloadRequestPlan {
+    match app.source.source_type.as_str() {
+        "winget" | "preinstalled_or_winget" => {
+            DownloadRequestPlan::Skipped("winget source does not require local cache".to_owned())
+        }
+        "direct_url" => build_direct_url_download_request(app),
+        "github_release" => resolve_github_release_download_request(app),
+        source_type => {
+            DownloadRequestPlan::Failed(format!("unsupported download source type `{source_type}`"))
+        }
+    }
+}
+
+fn build_direct_url_download_request(app: &AppEntry) -> DownloadRequestPlan {
+    let Some(url) = app.source.url.as_deref() else {
+        return DownloadRequestPlan::Failed("missing direct URL".to_owned());
+    };
+
+    let Some(file_name) = installer_file_name_from_url(url) else {
+        return DownloadRequestPlan::Failed(format!("URL is not a direct installer file: {url}"));
+    };
+
+    DownloadRequestPlan::Ready(DownloadRequest {
+        url: url.to_owned(),
+        file_name,
+    })
+}
+
+fn resolve_github_release_download_request(app: &AppEntry) -> DownloadRequestPlan {
+    let Some(repo) = app.source.repo.as_deref() else {
+        return DownloadRequestPlan::Failed("missing GitHub repo".to_owned());
+    };
+    let Some(asset_pattern) = app.source.asset_pattern.as_deref() else {
+        return DownloadRequestPlan::Failed("missing GitHub asset pattern".to_owned());
+    };
+
+    let client = match http_client() {
+        Ok(client) => client,
+        Err(error) => return DownloadRequestPlan::Failed(error),
+    };
+    let url = format!("https://api.github.com/repos/{repo}/releases/latest");
+    let response = client
+        .get(url)
+        .header("User-Agent", "WinInstallTool")
+        .send();
+    let response = match response {
+        Ok(response) => response,
+        Err(error) => return DownloadRequestPlan::Failed(error.to_string()),
+    };
+    let release = match response.error_for_status() {
+        Ok(response) => response.json::<GithubRelease>(),
+        Err(error) => return DownloadRequestPlan::Failed(error.to_string()),
+    };
+
+    match release {
+        Ok(release) => select_github_release_asset(&release, asset_pattern)
+            .map(DownloadRequestPlan::Ready)
+            .unwrap_or_else(|| {
+                DownloadRequestPlan::Failed(format!(
+                    "no GitHub release asset matched `{asset_pattern}`"
+                ))
+            }),
+        Err(error) => DownloadRequestPlan::Failed(error.to_string()),
+    }
+}
+
+fn download_to_cache(
+    app: &AppEntry,
+    cache_root: &Path,
+    request: DownloadRequest,
+) -> DownloadResult {
+    let app_cache = cache_root.join(&app.id);
+    if let Err(error) = std::fs::create_dir_all(&app_cache) {
+        return DownloadResult {
+            app_id: app.id.clone(),
+            app_name: app.name.clone(),
+            status: DownloadStatus::Failed,
+            message: error.to_string(),
+            path: None,
+        };
+    }
+
+    let target = app_cache.join(&request.file_name);
+    let client = match http_client() {
+        Ok(client) => client,
+        Err(error) => {
+            return DownloadResult {
+                app_id: app.id.clone(),
+                app_name: app.name.clone(),
+                status: DownloadStatus::Failed,
+                message: error,
+                path: None,
+            };
+        }
+    };
+
+    let bytes = client
+        .get(&request.url)
+        .header("User-Agent", "WinInstallTool")
+        .send()
+        .and_then(reqwest::blocking::Response::error_for_status)
+        .and_then(|response| response.bytes());
+
+    match bytes {
+        Ok(bytes) => match std::fs::write(&target, &bytes) {
+            Ok(()) => DownloadResult {
+                app_id: app.id.clone(),
+                app_name: app.name.clone(),
+                status: DownloadStatus::Downloaded,
+                message: format!("downloaded {} bytes", bytes.len()),
+                path: Some(target),
+            },
+            Err(error) => DownloadResult {
+                app_id: app.id.clone(),
+                app_name: app.name.clone(),
+                status: DownloadStatus::Failed,
+                message: error.to_string(),
+                path: None,
+            },
+        },
+        Err(error) => DownloadResult {
+            app_id: app.id.clone(),
+            app_name: app.name.clone(),
+            status: DownloadStatus::Failed,
+            message: error.to_string(),
+            path: None,
+        },
+    }
+}
+
+fn http_client() -> Result<reqwest::blocking::Client, String> {
+    reqwest::blocking::Client::builder()
+        .redirect(reqwest::redirect::Policy::limited(10))
+        .build()
+        .map_err(|error| error.to_string())
+}
+
+fn installer_file_name_from_url(url: &str) -> Option<String> {
+    let without_query = url.split(['?', '#']).next().unwrap_or(url);
+    let file_name = without_query.rsplit('/').next()?.trim();
+    let lowered = file_name.to_ascii_lowercase();
+    if lowered.ends_with(".exe") || lowered.ends_with(".msi") {
+        Some(file_name.to_owned())
+    } else {
+        None
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct GithubRelease {
+    assets: Vec<GithubReleaseAsset>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GithubReleaseAsset {
+    name: String,
+    browser_download_url: String,
+}
+
+fn select_github_release_asset(
+    release: &GithubRelease,
+    asset_pattern: &str,
+) -> Option<DownloadRequest> {
+    release
+        .assets
+        .iter()
+        .find(|asset| asset.name.contains(asset_pattern))
+        .map(|asset| DownloadRequest {
+            url: asset.browser_download_url.clone(),
+            file_name: asset.name.clone(),
+        })
 }
 
 pub fn validate_manifest_for_install(manifest: &AppManifest) -> ConfigValidationReport {
@@ -431,7 +653,8 @@ fn evaluate_registry_rule(_rule: &DetectRule) -> RuleEvaluation {
 #[cfg(test)]
 mod tests {
     use super::{
-        DetectionState, build_install_command, build_plan, detect_app,
+        DetectionState, GithubRelease, GithubReleaseAsset, build_install_command, build_plan,
+        detect_app, installer_file_name_from_url, select_github_release_asset,
         validate_manifest_for_install,
     };
     use crate::config::{
@@ -538,6 +761,40 @@ mod tests {
         let _ = std::fs::remove_dir_all(cache_root);
         assert_eq!(command.program, installer.to_string_lossy());
         assert_eq!(command.args, vec!["/S"]);
+    }
+
+    #[test]
+    fn direct_installer_file_name_comes_from_url_path() {
+        assert_eq!(
+            installer_file_name_from_url("https://example.com/download/setup-x64.msi?token=1"),
+            Some("setup-x64.msi".to_owned())
+        );
+        assert_eq!(
+            installer_file_name_from_url("https://example.com/download"),
+            None
+        );
+    }
+
+    #[test]
+    fn github_release_asset_selection_uses_manifest_pattern() {
+        let release = GithubRelease {
+            assets: vec![
+                GithubReleaseAsset {
+                    name: "npp.8.8.portable.x64.zip".to_owned(),
+                    browser_download_url: "https://example.com/portable.zip".to_owned(),
+                },
+                GithubReleaseAsset {
+                    name: "npp.8.8.Installer.x64.msi".to_owned(),
+                    browser_download_url: "https://example.com/notepadpp.msi".to_owned(),
+                },
+            ],
+        };
+
+        let request = select_github_release_asset(&release, "Installer.x64.msi")
+            .expect("matching asset should be selected");
+
+        assert_eq!(request.file_name, "npp.8.8.Installer.x64.msi");
+        assert_eq!(request.url, "https://example.com/notepadpp.msi");
     }
 
     fn test_app_with_rules(rules: Vec<DetectRule>) -> AppEntry {

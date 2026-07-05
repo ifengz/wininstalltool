@@ -4,8 +4,8 @@ mod ui_model;
 
 use crate::config::{AppManifest, LoadConfigError};
 use crate::engine::{
-    DetectionState, build_install_command, detect_app, detect_selected_apps, run_install_command,
-    validate_manifest_for_install,
+    DetectionState, DownloadStatus, build_install_command, detect_app, detect_selected_apps,
+    download_cache_for_app, run_install_command, validate_manifest_for_install,
 };
 use crate::ui_model::{CategoryView, InstallerViewModel, build_view_model};
 use slint::{ModelRc, SharedString, StandardListViewItem, TableColumn, VecModel};
@@ -436,30 +436,26 @@ fn run_download_cache_plan(state: &mut RuntimeState) {
         .filter(|app| selected.iter().any(|id| id == &app.id))
     {
         match app.source.source_type.as_str() {
-            "winget" | "preinstalled_or_winget" => {
-                state.push_log(format!("{}：winget 来源不需要本地下载缓存", app.name));
-            }
-            "direct_url" => {
-                let url = app.source.url.as_deref().unwrap_or_default();
-                if is_direct_installer_url(url) {
-                    state.push_log(format!(
-                        "{}：直接安装包下载待接入，目标缓存目录 cache/{}",
-                        app.name, app.id
-                    ));
-                } else {
-                    state.push_log(format!(
-                        "{}：当前 URL 是下载页，不作为自动下载源：{}",
-                        app.name, url
-                    ));
+            "winget" | "preinstalled_or_winget" | "direct_url" | "github_release" => {
+                let result = download_cache_for_app(app, Path::new("cache"));
+                match result.status {
+                    DownloadStatus::Downloaded => {
+                        let path = result
+                            .path
+                            .as_ref()
+                            .map(|path| path.display().to_string())
+                            .unwrap_or_else(|| result.message.clone());
+                        state.push_log(format!("{}：下载完成：{path}", result.app_name));
+                    }
+                    DownloadStatus::Skipped => {
+                        state
+                            .push_log(format!("{}：跳过下载：{}", result.app_name, result.message));
+                    }
+                    DownloadStatus::Failed => {
+                        state
+                            .push_log(format!("{}：下载失败：{}", result.app_name, result.message));
+                    }
                 }
-            }
-            "github_release" => {
-                state.push_log(format!(
-                    "{}：GitHub Release 下载待接入，规则：{} / {}",
-                    app.name,
-                    app.source.repo.as_deref().unwrap_or(""),
-                    app.source.asset_pattern.as_deref().unwrap_or("")
-                ));
             }
             source_type => state.push_log(format!(
                 "{}：不支持的下载来源类型 `{source_type}`",
@@ -467,11 +463,6 @@ fn run_download_cache_plan(state: &mut RuntimeState) {
             )),
         }
     }
-}
-
-fn is_direct_installer_url(url: &str) -> bool {
-    let lowered = url.to_ascii_lowercase();
-    lowered.ends_with(".exe") || lowered.ends_with(".msi")
 }
 
 fn detection_state_label(state: &DetectionState) -> &'static str {
@@ -612,18 +603,5 @@ mod tests {
 
         assert_eq!(row.name, "Microsoft Edge");
         assert!(row.homepage_url.starts_with("https://"));
-    }
-
-    #[test]
-    fn direct_installer_url_detection_is_extension_based() {
-        assert!(super::is_direct_installer_url(
-            "https://example.com/setup.msi"
-        ));
-        assert!(super::is_direct_installer_url(
-            "https://example.com/setup.EXE"
-        ));
-        assert!(!super::is_direct_installer_url(
-            "https://example.com/download"
-        ));
     }
 }
