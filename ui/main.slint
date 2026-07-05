@@ -116,186 +116,206 @@ export component AppWindow inherits Window {
                 PhaseRow { label: "真实安装执行"; done: false; }
                 PhaseRow { label: "驱动安装"; done: false; }
 
-                Text {
-                    text: "日志";
-                    font-size: 13px;
-                    font-weight: 700;
-                    color: #111111;
-                    height: 24px;
-                    vertical-alignment: center;
-                }
-
-                TextEdit {
-                    text: root.log-text;
-                    read-only: true;
-                    min-height: 160px;
-                    vertical-stretch: 1;
-                }
+                Rectangle { vertical-stretch: 1; }
             }
         }
 
-        Rectangle {
-            border-radius: 3px;
-            border-width: 1px;
-            border-color: #e3e3df;
-            background: #ffffff;
+        VerticalLayout {
+            spacing: 12px;
+            horizontal-stretch: 1;
 
-            VerticalLayout {
-                padding: 16px;
-                spacing: 10px;
+            Rectangle {
+                border-radius: 3px;
+                border-width: 1px;
+                border-color: #e3e3df;
+                background: #ffffff;
+                vertical-stretch: 1;
 
-                HorizontalLayout {
-                    height: 32px;
+                VerticalLayout {
+                    padding: 16px;
                     spacing: 10px;
 
-                    Text {
-                        text: "安装中心";
-                        font-size: 20px;
-                        font-weight: 700;
-                        color: #111111;
-                        width: 96px;
-                        vertical-alignment: center;
-                    }
+                    HorizontalLayout {
+                        height: 32px;
+                        spacing: 10px;
 
-                    Text {
-                        text: "默认安装路径";
-                        font-size: 13px;
-                        color: #787774;
-                        width: 88px;
-                        vertical-alignment: center;
-                    }
-
-                    LineEdit {
-                        text <=> root.install-root;
-                        width: 320px;
-                        height: 28px;
-                    }
-
-                    Button {
-                        text: "选择...";
-                        width: 66px;
-                        height: 28px;
-                        clicked => { root.choose-install-root(); }
-                    }
-
-                    Rectangle { horizontal-stretch: 1; }
-
-                    Text {
-                        text: "已选 " + root.selected-count;
-                        font-size: 13px;
-                        color: #2f3437;
-                        width: 64px;
-                        vertical-alignment: center;
-                        horizontal-alignment: right;
-                    }
-                    Text {
-                        text: "需管理员 " + root.admin-count;
-                        font-size: 13px;
-                        color: #787774;
-                        width: 82px;
-                        vertical-alignment: center;
-                        horizontal-alignment: right;
-                    }
-                    Text {
-                        text: "待实测 " + root.verification-count;
-                        font-size: 13px;
-                        color: #787774;
-                        width: 74px;
-                        vertical-alignment: center;
-                        horizontal-alignment: right;
-                    }
-                }
-
-                HorizontalLayout {
-                    height: 30px;
-                    spacing: 10px;
-
-                    Text {
-                        text: "缓存目录";
-                        font-size: 13px;
-                        color: #787774;
-                        width: 88px;
-                        vertical-alignment: center;
-                    }
-
-                    LineEdit {
-                        text <=> root.cache-root;
-                        width: 420px;
-                        height: 28px;
-                    }
-
-                    Button {
-                        text: "选择...";
-                        width: 66px;
-                        height: 28px;
-                        clicked => { root.choose-cache-root(); }
-                    }
-
-                    Button {
-                        text: "打开";
-                        width: 54px;
-                        height: 28px;
-                        clicked => { root.open-cache-root(); }
-                    }
-
-                    Rectangle { horizontal-stretch: 1; }
-                }
-
-                HorizontalLayout {
-                    height: 26px;
-                    spacing: 10px;
-
-                    Text {
-                        text: root.task-status;
-                        font-size: 12px;
-                        color: #787774;
-                        width: 240px;
-                        vertical-alignment: center;
-                    }
-
-                    ProgressIndicator {
-                        progress: root.task-progress;
-                        indeterminate: false;
-                        height: 8px;
-                        horizontal-stretch: 1;
-                    }
-                }
-
-                HorizontalLayout {
-                    height: 28px;
-                    spacing: 8px;
-                    for category[index] in root.category-labels: Button {
-                        text: category;
-                        height: 26px;
-                        clicked => { root.category-selected(index); }
-                    }
-                    Rectangle { horizontal-stretch: 1; }
-                    Button {
-                        text: "切换选择";
-                        width: 76px;
-                        height: 26px;
-                        enabled: root.current-row >= 0;
-                        clicked => { root.toggle-row-selection(root.current-row); }
-                    }
-                    Button {
-                        text: "打开官网";
-                        width: 76px;
-                        height: 26px;
-                        enabled: root.current-row >= 0;
-                        clicked => { root.open-homepage(); }
-                    }
-                }
-
-                StandardTableView {
-                    columns: root.table-columns;
-                    rows: root.table-rows;
-                    current-row <=> root.current-row;
-                    horizontal-stretch: 1;
-                    vertical-stretch: 1;
-                    row-pointer-event(row, event, position) => {
-                        if event.button == PointerEventButton.left && event.kind == PointerEventKind.down && position.x < 44px {
-                            root.toggle-row-selection(row);
+                        Text {
+                            text: "安装中心";
+                            font-size: 20px;
+                            font-weight: 700;
+                            color: #111111;
+                            width: 96px;
+                            vertical-alignment: center;
                         }
+
+                        Text {
+                            text: "默认安装路径";
+                            font-size: 13px;
+                            color: #787774;
+                            width: 88px;
+                            vertical-alignment: center;
+                        }
+
+                        LineEdit {
+                            text <=> root.install-root;
+                            width: 320px;
+                            height: 28px;
+                        }
+
+                        Button {
+                            text: "选择...";
+                            width: 66px;
+                            height: 28px;
+                            clicked => { root.choose-install-root(); }
+                        }
+
+                        Rectangle { horizontal-stretch: 1; }
+
+                        Text {
+                            text: "已选 " + root.selected-count;
+                            font-size: 13px;
+                            color: #2f3437;
+                            width: 64px;
+                            vertical-alignment: center;
+                            horizontal-alignment: right;
+                        }
+                        Text {
+                            text: "需管理员 " + root.admin-count;
+                            font-size: 13px;
+                            color: #787774;
+                            width: 82px;
+                            vertical-alignment: center;
+                            horizontal-alignment: right;
+                        }
+                        Text {
+                            text: "待实测 " + root.verification-count;
+                            font-size: 13px;
+                            color: #787774;
+                            width: 74px;
+                            vertical-alignment: center;
+                            horizontal-alignment: right;
+                        }
+                    }
+
+                    HorizontalLayout {
+                        height: 30px;
+                        spacing: 10px;
+
+                        Text {
+                            text: "缓存目录";
+                            font-size: 13px;
+                            color: #787774;
+                            width: 88px;
+                            vertical-alignment: center;
+                        }
+
+                        LineEdit {
+                            text <=> root.cache-root;
+                            width: 420px;
+                            height: 28px;
+                        }
+
+                        Button {
+                            text: "选择...";
+                            width: 66px;
+                            height: 28px;
+                            clicked => { root.choose-cache-root(); }
+                        }
+
+                        Button {
+                            text: "打开";
+                            width: 54px;
+                            height: 28px;
+                            clicked => { root.open-cache-root(); }
+                        }
+
+                        Rectangle { horizontal-stretch: 1; }
+                    }
+
+                    HorizontalLayout {
+                        height: 28px;
+                        spacing: 8px;
+                        for category[index] in root.category-labels: Button {
+                            text: category;
+                            height: 26px;
+                            clicked => { root.category-selected(index); }
+                        }
+                        Rectangle { horizontal-stretch: 1; }
+                        Button {
+                            text: "切换选择";
+                            width: 76px;
+                            height: 26px;
+                            enabled: root.current-row >= 0;
+                            clicked => { root.toggle-row-selection(root.current-row); }
+                        }
+                        Button {
+                            text: "打开官网";
+                            width: 76px;
+                            height: 26px;
+                            enabled: root.current-row >= 0;
+                            clicked => { root.open-homepage(); }
+                        }
+                    }
+
+                    StandardTableView {
+                        columns: root.table-columns;
+                        rows: root.table-rows;
+                        current-row <=> root.current-row;
+                        horizontal-stretch: 1;
+                        vertical-stretch: 1;
+                        row-pointer-event(row, event, position) => {
+                            if event.button == PointerEventButton.left && event.kind == PointerEventKind.down && position.x < 44px {
+                                root.toggle-row-selection(row);
+                            }
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                height: 186px;
+                border-radius: 3px;
+                border-width: 1px;
+                border-color: #e3e3df;
+                background: #ffffff;
+
+                VerticalLayout {
+                    padding: 12px;
+                    spacing: 8px;
+
+                    HorizontalLayout {
+                        height: 24px;
+                        spacing: 10px;
+
+                        Text {
+                            text: "状态 / 日志";
+                            font-size: 13px;
+                            font-weight: 700;
+                            color: #111111;
+                            width: 86px;
+                            vertical-alignment: center;
+                        }
+
+                        Text {
+                            text: root.task-status;
+                            font-size: 12px;
+                            color: #787774;
+                            width: 260px;
+                            vertical-alignment: center;
+                        }
+
+                        ProgressIndicator {
+                            progress: root.task-progress;
+                            indeterminate: false;
+                            height: 8px;
+                            horizontal-stretch: 1;
+                        }
+                    }
+
+                    TextEdit {
+                        text: root.log-text;
+                        read-only: true;
+                        vertical-stretch: 1;
                     }
                 }
             }
