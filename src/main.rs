@@ -2,7 +2,10 @@ mod config;
 mod engine;
 mod ui_model;
 
-use crate::config::{AppManifest, DEFAULT_CONFIG_PATH, LoadConfigError};
+use crate::config::{
+    AppEntry, AppManifest, DEFAULT_CONFIG_PATH, DetectRule, DetectSpec, InstallSpec,
+    LoadConfigError, PackageSource,
+};
 use crate::engine::{
     DetectionState, DownloadStatus, build_install_command, detect_app, detect_selected_apps,
     download_cache_for_app, run_install_command, validate_manifest_for_install,
@@ -187,6 +190,18 @@ fn wire_callbacks(app: &AppWindow, state: Rc<RefCell<RuntimeState>>) {
 
         let mut state = detect_state.borrow_mut();
         run_detection(&mut state);
+        refresh_window(&app, &state);
+    });
+
+    let weak = app.as_weak();
+    let add_template_state = Rc::clone(&state);
+    app.on_add_app_template(move || {
+        let Some(app) = weak.upgrade() else {
+            return;
+        };
+
+        let mut state = add_template_state.borrow_mut();
+        add_app_template(&mut state);
         refresh_window(&app, &state);
     });
 
@@ -435,6 +450,85 @@ fn reload_config(state: &mut RuntimeState) {
             state.push_log("软件配置重载失败");
         }
     }
+}
+
+fn add_app_template(state: &mut RuntimeState) -> bool {
+    let manifest = match &state.manifest {
+        Ok(manifest) => manifest,
+        Err(_) => {
+            state.push_log("添加软件失败：配置未正确读取");
+            return false;
+        }
+    };
+
+    let mut next_manifest = manifest.clone();
+    let app = new_app_template(&next_manifest);
+    let app_name = app.name.clone();
+    let app_id = app.id.clone();
+    next_manifest.apps.push(app);
+
+    match next_manifest.save_to_default_path() {
+        Ok(()) => {
+            state.manifest = Ok(next_manifest);
+            state.active_category = None;
+            state.current_row = -1;
+            state.push_log(format!(
+                "已添加软件模板：{app_name}（{app_id}），请打开配置补全来源、静默参数和检测规则"
+            ));
+            true
+        }
+        Err(error) => {
+            state.push_log(format!("添加软件失败：写入配置失败：{error}"));
+            false
+        }
+    }
+}
+
+fn new_app_template(manifest: &AppManifest) -> AppEntry {
+    let next_number = next_template_number(manifest);
+    let id = format!("new-app-{next_number}");
+    AppEntry {
+        id: id.clone(),
+        name: format!("新软件 {next_number}"),
+        category: "utility".to_owned(),
+        homepage_url: None,
+        enabled_by_default: false,
+        verification_status: "candidate_medium".to_owned(),
+        source: PackageSource {
+            source_type: "direct_url".to_owned(),
+            package_id: None,
+            url: Some("https://example.com/installer.exe".to_owned()),
+            repo: None,
+            asset_pattern: None,
+        },
+        install: InstallSpec {
+            method: "direct_exe".to_owned(),
+            requires_admin: true,
+            supports_custom_path: false,
+            args: None,
+            silent_args: Some(vec!["/S".to_owned()]),
+            direct_silent_args: Some(vec!["/S".to_owned()]),
+            direct_install_location_arg: None,
+            fallback_notes: Some("模板：请替换下载地址、静默参数和检测规则后再启用".to_owned()),
+        },
+        detect: DetectSpec {
+            detect_type: "path_exists".to_owned(),
+            rules: vec![DetectRule {
+                rule_type: "path_exists".to_owned(),
+                value: "C:\\Program Files\\NewApp\\app.exe".to_owned(),
+            }],
+        },
+        notes: Some(format!("模板 {id}：补全后把 enabled_by_default 改为 true")),
+    }
+}
+
+fn next_template_number(manifest: &AppManifest) -> usize {
+    (1..)
+        .find(|number| {
+            let id = format!("new-app-{number}");
+            manifest.apps.iter().all(|app| app.id != id)
+        })
+        .unwrap_or(1)
 }
 
 fn run_detection(state: &mut RuntimeState) {
@@ -980,6 +1074,22 @@ mod tests {
         assert_eq!(next_manifest.apps.len(), manifest.apps.len() - 1);
         assert!(!next_manifest.apps.iter().any(|app| app.id == "edge"));
         assert!(next_manifest.apps.iter().any(|app| app.id == "chrome"));
+    }
+
+    #[test]
+    fn new_app_template_uses_unique_disabled_id() {
+        let mut manifest =
+            crate::config::AppManifest::load_from_default_path().expect("apps example should load");
+        manifest.apps.push(super::new_app_template(&manifest));
+
+        let app = super::new_app_template(&manifest);
+
+        assert_eq!(app.id, "new-app-2");
+        assert_eq!(app.category, "utility");
+        assert!(!app.enabled_by_default);
+        assert_eq!(app.install.method, "direct_exe");
+        assert_eq!(app.source.source_type, "direct_url");
+        assert!(!app.detect.rules.is_empty());
     }
 
     #[test]

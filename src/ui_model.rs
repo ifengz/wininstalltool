@@ -95,6 +95,7 @@ fn ordered_categories(manifest: &AppManifest) -> Vec<&str> {
         "developer_tool",
         "security",
         "image_viewer",
+        "utility",
     ]
     .into_iter()
     .filter(|category| manifest.apps.iter().any(|app| app.category == *category))
@@ -109,6 +110,7 @@ fn category_label(category: &str) -> &'static str {
         "office" => "办公套件",
         "security" => "安全防护",
         "image_viewer" => "看图工具",
+        "utility" => "通用软件",
         _ => "通用软件",
     }
 }
