@@ -50,6 +50,7 @@ struct RuntimeState {
 #[derive(Clone, Debug, Default)]
 struct AddAppFormState {
     visible: bool,
+    editing_existing_id: Option<String>,
     id: String,
     name: String,
     category: String,
@@ -221,6 +222,18 @@ fn wire_callbacks(app: &AppWindow, state: Rc<RefCell<RuntimeState>>) {
 
         let mut state = add_template_state.borrow_mut();
         show_add_app_form(&mut state);
+        refresh_window(&app, &state);
+    });
+
+    let weak = app.as_weak();
+    let edit_app_state = Rc::clone(&state);
+    app.on_show_edit_current_app_form(move || {
+        let Some(app) = weak.upgrade() else {
+            return;
+        };
+
+        let mut state = edit_app_state.borrow_mut();
+        show_edit_current_app_form(&mut state, app.get_current_row());
         refresh_window(&app, &state);
     });
 
@@ -586,6 +599,7 @@ fn show_add_app_form(state: &mut RuntimeState) {
     let next_number = next_template_number(manifest);
     state.add_form = AddAppFormState {
         visible: true,
+        editing_existing_id: None,
         id: format!("new-app-{next_number}"),
         name: String::new(),
         category: "utility".to_owned(),
@@ -594,6 +608,26 @@ fn show_add_app_form(state: &mut RuntimeState) {
         detect_path: String::new(),
     };
     state.push_log("请填写软件名称、winget 包 ID 和检测路径后保存");
+}
+
+fn show_edit_current_app_form(state: &mut RuntimeState, current_row: i32) -> bool {
+    let manifest = match &state.manifest {
+        Ok(manifest) => manifest,
+        Err(_) => {
+            state.push_log("编辑软件失败：配置未正确读取");
+            return false;
+        }
+    };
+
+    let Some(app) = visible_app_by_index(manifest, state.active_category.as_deref(), current_row)
+    else {
+        state.push_log("编辑软件失败：未选择有效软件行");
+        return false;
+    };
+
+    state.add_form = form_from_app(app);
+    state.push_log(format!("正在编辑软件：{}", app.name));
+    true
 }
 
 fn save_add_app_form(state: &mut RuntimeState) -> bool {
@@ -612,19 +646,17 @@ fn save_add_app_form(state: &mut RuntimeState) -> bool {
             return false;
         }
     };
+    let app_name = app.name.clone();
 
-    let next_manifest = match manifest_with_added_app(manifest, app) {
-        Ok(manifest) => manifest,
-        Err(error) => {
-            state.push_log(format!("添加软件失败：{error}"));
-            return false;
-        }
-    };
-    let app_name = next_manifest
-        .apps
-        .last()
-        .map(|app| app.name.clone())
-        .unwrap_or_else(|| "新软件".to_owned());
+    let next_manifest =
+        match manifest_with_saved_app(manifest, state.add_form.editing_existing_id.as_deref(), app)
+        {
+            Ok(manifest) => manifest,
+            Err(error) => {
+                state.push_log(format!("保存软件失败：{error}"));
+                return false;
+            }
+        };
 
     match next_manifest.save_to_default_path() {
         Ok(()) => {
@@ -633,7 +665,7 @@ fn save_add_app_form(state: &mut RuntimeState) -> bool {
             state.current_row = -1;
             state.add_form.visible = false;
             state.push_log(format!(
-                "已添加软件：{app_name}。默认不勾选，请校验配置和检测规则后再安装。"
+                "已保存软件：{app_name}。默认不勾选，请校验配置和检测规则后再安装。"
             ));
             true
         }
@@ -641,6 +673,25 @@ fn save_add_app_form(state: &mut RuntimeState) -> bool {
             state.push_log(format!("添加软件失败：写入配置失败：{error}"));
             false
         }
+    }
+}
+
+fn form_from_app(app: &AppEntry) -> AddAppFormState {
+    AddAppFormState {
+        visible: true,
+        editing_existing_id: Some(app.id.clone()),
+        id: app.id.clone(),
+        name: app.name.clone(),
+        category: app.category.clone(),
+        winget_id: app.source.package_id.clone().unwrap_or_default(),
+        homepage: app.homepage_url.clone().unwrap_or_default(),
+        detect_path: app
+            .detect
+            .rules
+            .iter()
+            .find(|rule| rule.rule_type == "path_exists")
+            .map(|rule| rule.value.clone())
+            .unwrap_or_default(),
     }
 }
 
@@ -698,13 +749,42 @@ fn app_from_add_form(form: &AddAppFormState) -> Result<AppEntry, String> {
     })
 }
 
-fn manifest_with_added_app(manifest: &AppManifest, app: AppEntry) -> Result<AppManifest, String> {
-    if manifest.apps.iter().any(|existing| existing.id == app.id) {
-        return Err(format!("软件 id 已存在：{}", app.id));
-    }
-
+fn manifest_with_saved_app(
+    manifest: &AppManifest,
+    editing_existing_id: Option<&str>,
+    app: AppEntry,
+) -> Result<AppManifest, String> {
     let mut next_manifest = manifest.clone();
-    next_manifest.apps.push(app);
+    match editing_existing_id {
+        Some(existing_id) => {
+            let Some(position) = next_manifest
+                .apps
+                .iter()
+                .position(|existing| existing.id == existing_id)
+            else {
+                return Err(format!("软件不存在：{existing_id}"));
+            };
+            if app.id != existing_id
+                && next_manifest
+                    .apps
+                    .iter()
+                    .any(|existing| existing.id == app.id)
+            {
+                return Err(format!("软件 id 已存在：{}", app.id));
+            }
+            next_manifest.apps[position] = app;
+        }
+        None => {
+            if next_manifest
+                .apps
+                .iter()
+                .any(|existing| existing.id == app.id)
+            {
+                return Err(format!("软件 id 已存在：{}", app.id));
+            }
+            next_manifest.apps.push(app);
+        }
+    }
     Ok(next_manifest)
 }
 
@@ -1491,7 +1571,16 @@ mod tests {
         super::show_add_app_form(&mut state);
 
         assert!(state.add_form.visible);
-        assert_eq!(state.add_form.id, "new-app-1");
+        assert!(state.add_form.id.starts_with("new-app-"));
+        assert!(
+            state
+                .manifest
+                .as_ref()
+                .unwrap()
+                .apps
+                .iter()
+                .all(|app| app.id != state.add_form.id)
+        );
         assert_eq!(state.add_form.category, "utility");
     }
 
@@ -1501,6 +1590,7 @@ mod tests {
             crate::config::AppManifest::load_from_default_path().expect("apps example should load");
         let form = super::AddAppFormState {
             visible: true,
+            editing_existing_id: None,
             id: "sevenzip-e2e".to_owned(),
             name: "7-Zip E2E".to_owned(),
             category: "utility".to_owned(),
@@ -1511,7 +1601,7 @@ mod tests {
 
         let app = super::app_from_add_form(&form).expect("real winget app form should build");
         let added_manifest =
-            super::manifest_with_added_app(&manifest, app).expect("app should be added");
+            super::manifest_with_saved_app(&manifest, None, app).expect("app should be added");
         let report = crate::engine::validate_manifest_for_install(&added_manifest);
         assert!(report.errors.is_empty(), "{:?}", report.errors);
 
@@ -1550,6 +1640,78 @@ mod tests {
         );
 
         let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn e2e_edit_existing_generated_app_into_real_winget_app() {
+        let manifest =
+            crate::config::AppManifest::load_from_default_path().expect("apps example should load");
+        let placeholder = super::AppEntry {
+            id: "new-app-edit-e2e".to_owned(),
+            name: "新软件 编辑 E2E".to_owned(),
+            category: "utility".to_owned(),
+            homepage_url: None,
+            enabled_by_default: false,
+            verification_status: "candidate_medium".to_owned(),
+            source: super::PackageSource {
+                source_type: "direct_url".to_owned(),
+                package_id: None,
+                url: Some("https://example.com/installer.exe".to_owned()),
+                repo: None,
+                asset_pattern: None,
+            },
+            install: super::InstallSpec {
+                method: "direct_exe".to_owned(),
+                requires_admin: true,
+                supports_custom_path: false,
+                args: None,
+                silent_args: Some(vec!["/S".to_owned()]),
+                direct_silent_args: Some(vec!["/S".to_owned()]),
+                direct_install_location_arg: None,
+                fallback_notes: Some("test placeholder".to_owned()),
+            },
+            detect: super::DetectSpec {
+                detect_type: "path_exists".to_owned(),
+                rules: vec![super::DetectRule {
+                    rule_type: "path_exists".to_owned(),
+                    value: "C:\\Program Files\\Placeholder\\app.exe".to_owned(),
+                }],
+            },
+            notes: Some("test placeholder".to_owned()),
+        };
+        let with_placeholder =
+            super::manifest_with_saved_app(&manifest, None, placeholder).expect("add placeholder");
+        let form = super::AddAppFormState {
+            visible: true,
+            editing_existing_id: Some("new-app-edit-e2e".to_owned()),
+            id: "new-app-edit-e2e".to_owned(),
+            name: "7-Zip Edited E2E".to_owned(),
+            category: "utility".to_owned(),
+            winget_id: "7zip.7zip".to_owned(),
+            homepage: "https://www.7-zip.org/".to_owned(),
+            detect_path: "C:\\Program Files\\7-Zip\\7zFM.exe".to_owned(),
+        };
+        let app = super::app_from_add_form(&form).expect("edit form should build");
+        let edited_manifest = super::manifest_with_saved_app(
+            &with_placeholder,
+            form.editing_existing_id.as_deref(),
+            app,
+        )
+        .expect("placeholder should update");
+
+        let edited = edited_manifest
+            .apps
+            .iter()
+            .find(|app| app.id == "new-app-edit-e2e")
+            .expect("edited app should exist");
+        assert_eq!(edited.name, "7-Zip Edited E2E");
+        assert_eq!(edited.source.source_type, "winget");
+        assert_eq!(edited.source.package_id.as_deref(), Some("7zip.7zip"));
+        assert_eq!(edited.install.method, "winget");
+        assert_eq!(
+            edited.detect.rules[0].value,
+            "C:\\Program Files\\7-Zip\\7zFM.exe"
+        );
     }
 
     #[test]

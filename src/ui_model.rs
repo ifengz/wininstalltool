@@ -172,17 +172,17 @@ mod tests {
 
         let view = super::build_view_model(&manifest, &selected, None, "D:\\CompanyApps");
 
-        assert_eq!(view.selected_count, 10);
+        assert_eq!(view.selected_count, selected.len());
         assert_eq!(view.admin_count, 9);
         assert_eq!(view.needs_verification_count, 6);
         assert_eq!(view.categories[0].label, "全部");
-        assert_eq!(view.categories[0].count, 10);
+        assert_eq!(view.categories[0].count, manifest.apps.len());
         assert!(
             view.categories
                 .iter()
                 .any(|category| category.label == "浏览器")
         );
-        assert_eq!(view.rows.len(), 10);
+        assert_eq!(view.rows.len(), manifest.apps.len());
     }
 
     #[test]

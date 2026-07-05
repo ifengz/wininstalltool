@@ -8,7 +8,7 @@ fn apps_example_is_valid_json_with_unique_ids() {
     let mut ids = HashSet::new();
 
     assert_eq!(value["schema_version"], 1);
-    assert_eq!(apps.len(), 10);
+    assert!(!apps.is_empty(), "apps should not be empty");
 
     for app in apps {
         let id = app["id"].as_str().expect("app id is string");

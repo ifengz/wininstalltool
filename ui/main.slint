@@ -66,6 +66,7 @@ export component AppWindow inherits Window {
     callback validate-config();
     callback detect-installed();
     callback show-add-app-form();
+    callback show-edit-current-app-form();
     callback save-add-app-form();
     callback cancel-add-app-form();
     callback open-config();
@@ -120,6 +121,12 @@ export component AppWindow inherits Window {
                 Button { text: "校验配置"; height: 30px; clicked => { root.validate-config(); } }
                 Button { text: "检测已安装"; height: 30px; clicked => { root.detect-installed(); } }
                 Button { text: "添加软件"; height: 30px; clicked => { root.show-add-app-form(); } }
+                Button {
+                    text: "编辑当前软件";
+                    height: 30px;
+                    enabled: root.current-row >= 0;
+                    clicked => { root.show-edit-current-app-form(); }
+                }
                 Button { text: "打开软件配置"; height: 30px; clicked => { root.open-config(); } }
                 Button { text: "重载配置"; height: 30px; clicked => { root.reload-config(); } }
                 Button {
@@ -302,7 +309,7 @@ export component AppWindow inherits Window {
             }
 
             Rectangle {
-                height: 186px;
+                height: root.add-form-visible ? 242px : 186px;
                 border-radius: 3px;
                 border-width: 1px;
                 border-color: #e3e3df;
