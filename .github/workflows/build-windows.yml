@@ -1,0 +1,39 @@
+name: Build Windows
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Test
+        run: cargo test
+
+      - name: Build release
+        run: cargo build --release
+
+      - name: Package portable app
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist\WinInstallTool
+          Copy-Item target\release\wininstalltool.exe dist\WinInstallTool\
+          Copy-Item -Recurse config dist\WinInstallTool\
+          New-Item -ItemType Directory -Force dist\WinInstallTool\cache
+          New-Item -ItemType Directory -Force dist\WinInstallTool\logs
+
+      - name: Upload portable app
+        uses: actions/upload-artifact@v4
+        with:
+          name: WinInstallTool-windows
+          path: dist\WinInstallTool

@@ -25,6 +25,25 @@ cargo test
 cargo run
 ```
 
+## Windows Build On GitHub
+
+GitHub Actions builds the Windows release package on every push to `main`.
+
+Download it from:
+
+```text
+GitHub -> Actions -> Build Windows -> latest run -> Artifacts -> WinInstallTool-windows
+```
+
+The artifact contains:
+
+```text
+wininstalltool.exe
+config/apps.example.json
+cache/
+logs/
+```
+
 ## Documentation
 
 - `doc/core/project.md`
