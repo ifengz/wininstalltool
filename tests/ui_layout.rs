@@ -109,6 +109,19 @@ fn main_content_panels_keep_right_inset() {
         "the selection header must not regress to a plain text label"
     );
     assert!(
+        ui.contains("selected: bool,"),
+        "row selection state must be boolean so it can drive a real checkbox"
+    );
+    assert!(
+        ui.contains("checked: row.selected;")
+            && ui.contains("toggled => { root.toggle-row-selection(index); }"),
+        "each software row must use a real checkbox for selection"
+    );
+    assert!(
+        !ui.contains("Text { text: row.selected;"),
+        "row selection must not be rendered as a checkmark text glyph"
+    );
+    assert!(
         ui.contains("placeholder-text: \"分类；新名称会新增\""),
         "add-software form must keep a clear category field instead of exposing internal English defaults"
     );

@@ -8,7 +8,7 @@ import {
 } from "std-widgets.slint";
 
 export struct UiAppRow {
-    selected: string,
+    selected: bool,
     name: string,
     purpose: string,
     source: string,
@@ -377,7 +377,13 @@ export component AppWindow inherits Window {
 
                                     HorizontalLayout {
                                         spacing: 0px;
-                                        Text { text: row.selected; width: 44px; font-size: 13px; color: #2f3437; vertical-alignment: center; horizontal-alignment: center; }
+                                        CheckBox {
+                                            width: 44px;
+                                            height: 32px;
+                                            text: "";
+                                            checked: row.selected;
+                                            toggled => { root.toggle-row-selection(index); }
+                                        }
                                         Text { text: row.name; width: 132px; font-size: 13px; color: #2f3437; vertical-alignment: center; }
                                         Text { text: row.purpose; width: 74px; font-size: 13px; color: #555555; vertical-alignment: center; }
                                         Text { text: row.source; horizontal-stretch: 2; font-size: 13px; color: #555555; vertical-alignment: center; }
@@ -395,12 +401,6 @@ export component AppWindow inherits Window {
                                             RowActionButton { text: "编辑"; clicked => { root.show-edit-row-form(index); } }
                                             RowActionButton { text: "删除"; clicked => { root.request-delete-row(index); } }
                                         }
-                                    }
-
-                                    TouchArea {
-                                        width: 44px;
-                                        height: parent.height;
-                                        clicked => { root.toggle-row-selection(index); }
                                     }
                                 }
                             }

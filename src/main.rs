@@ -592,7 +592,7 @@ fn app_row_model(rows: Vec<crate::ui_model::AppRowView>) -> ModelRc<UiAppRow> {
     let rows = rows
         .into_iter()
         .map(|row| UiAppRow {
-            selected: if row.selected { "✓" } else { "" }.into(),
+            selected: row.selected,
             name: row.name.into(),
             purpose: row.purpose.into(),
             source: row.source.into(),
