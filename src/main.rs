@@ -12,6 +12,7 @@ use slint::{ModelRc, SharedString, StandardListViewItem, TableColumn, VecModel};
 use std::cell::RefCell;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::rc::Rc;
 
 slint::include_modules!();
@@ -32,6 +33,9 @@ struct RuntimeState {
     active_category: Option<String>,
     current_row: i32,
     install_root: String,
+    cache_root: String,
+    task_status: String,
+    task_progress: f32,
     logs: Vec<String>,
 }
 
@@ -60,6 +64,9 @@ impl RuntimeState {
             active_category: None,
             current_row: -1,
             install_root,
+            cache_root: "cache".to_owned(),
+            task_status: "就绪".to_owned(),
+            task_progress: 0.0,
             logs: vec!["[startup] 配置已读取，真实安装尚未启用".to_owned()],
         }
     }
@@ -83,12 +90,42 @@ fn wire_callbacks(app: &AppWindow, state: Rc<RefCell<RuntimeState>>) {
         };
 
         let mut state = choose_state.borrow_mut();
-        let selected_path = pick_install_root_folder(&state.install_root);
-        if apply_install_root_selection(&mut state.install_root, selected_path) {
+        let selected_path = pick_folder("选择默认安装路径", &state.install_root);
+        if apply_folder_selection(&mut state.install_root, selected_path) {
             let path = state.install_root.clone();
             state.push_log(format!("默认安装路径已更新：{path}"));
             refresh_window(&app, &state);
         }
+    });
+
+    let weak = app.as_weak();
+    let cache_state = Rc::clone(&state);
+    app.on_choose_cache_root(move || {
+        let Some(app) = weak.upgrade() else {
+            return;
+        };
+
+        let mut state = cache_state.borrow_mut();
+        sync_editable_paths(&app, &mut state);
+        let selected_path = pick_folder("选择下载缓存目录", &state.cache_root);
+        if apply_folder_selection(&mut state.cache_root, selected_path) {
+            let path = state.cache_root.clone();
+            state.push_log(format!("下载缓存目录已更新：{path}"));
+            refresh_window(&app, &state);
+        }
+    });
+
+    let weak = app.as_weak();
+    let open_cache_state = Rc::clone(&state);
+    app.on_open_cache_root(move || {
+        let Some(app) = weak.upgrade() else {
+            return;
+        };
+
+        let mut state = open_cache_state.borrow_mut();
+        sync_editable_paths(&app, &mut state);
+        open_cache_folder(&mut state);
+        refresh_window(&app, &state);
     });
 
     let weak = app.as_weak();
@@ -111,7 +148,8 @@ fn wire_callbacks(app: &AppWindow, state: Rc<RefCell<RuntimeState>>) {
         };
 
         let mut state = install_state.borrow_mut();
-        run_selected_install(&mut state);
+        sync_editable_paths(&app, &mut state);
+        run_selected_install(&app, &mut state);
         refresh_window(&app, &state);
     });
 
@@ -123,7 +161,8 @@ fn wire_callbacks(app: &AppWindow, state: Rc<RefCell<RuntimeState>>) {
         };
 
         let mut state = download_state.borrow_mut();
-        run_download_cache_plan(&mut state);
+        sync_editable_paths(&app, &mut state);
+        run_download_cache_plan(&app, &mut state);
         refresh_window(&app, &state);
     });
 
@@ -170,6 +209,9 @@ fn wire_callbacks(app: &AppWindow, state: Rc<RefCell<RuntimeState>>) {
 
 fn refresh_window(app: &AppWindow, state: &RuntimeState) {
     app.set_install_root(state.install_root.clone().into());
+    app.set_cache_root(state.cache_root.clone().into());
+    app.set_task_status(state.task_status.clone().into());
+    app.set_task_progress(state.task_progress);
     app.set_table_columns(table_columns());
     app.set_log_text(state.logs.join("\n").into());
     app.set_current_row(state.current_row);
@@ -337,11 +379,12 @@ fn run_detection(state: &mut RuntimeState) {
     }
 }
 
-fn run_selected_install(state: &mut RuntimeState) {
+fn run_selected_install(app_window: &AppWindow, state: &mut RuntimeState) {
     let manifest = match &state.manifest {
         Ok(manifest) => manifest.clone(),
         Err(error) => {
             state.push_log(format!("安装失败：配置读取失败：{error}"));
+            set_task_status(app_window, state, "安装失败：配置读取失败", 0.0);
             return;
         }
     };
@@ -355,32 +398,42 @@ fn run_selected_install(state: &mut RuntimeState) {
         for error in validation.errors {
             state.push_log(format!("错误：{error}"));
         }
+        set_task_status(app_window, state, "安装中止：配置错误", 0.0);
         return;
     }
 
     if state.selected.is_empty() {
         state.push_log("安装跳过：未选择软件");
+        set_task_status(app_window, state, "安装跳过：未选择软件", 0.0);
         return;
     }
 
     let selected = state.selected.clone();
+    let total = selected.len();
+    let cache_root = PathBuf::from(&state.cache_root);
     state.push_log(format!("开始顺序安装：{} 个软件", selected.len()));
-    for app in manifest
+    set_task_status(app_window, state, format!("安装准备 0/{total}"), 0.0);
+    for (index, app) in manifest
         .apps
         .iter()
         .filter(|app| selected.iter().any(|id| id == &app.id))
+        .enumerate()
     {
+        set_task_progress(app_window, state, "安装中", index, total, &app.name);
+
         if app.install.method == "winget_if_missing"
             && detect_app(app).state == DetectionState::Installed
         {
             state.push_log(format!("跳过已安装：{}", app.name));
+            set_task_progress(app_window, state, "安装中", index + 1, total, &app.name);
             continue;
         }
 
-        let command = match build_install_command(app, &state.install_root, Path::new("cache")) {
+        let command = match build_install_command(app, &state.install_root, &cache_root) {
             Ok(command) => command,
             Err(error) => {
                 state.push_log(format!("{} 安装失败：{error}", app.name));
+                set_task_progress(app_window, state, "安装中", index + 1, total, &app.name);
                 continue;
             }
         };
@@ -411,33 +464,47 @@ fn run_selected_install(state: &mut RuntimeState) {
                 result.stdout.trim()
             ));
         }
+        set_task_progress(app_window, state, "安装中", index + 1, total, &app.name);
     }
+    set_task_status(
+        app_window,
+        state,
+        format!("安装流程结束 {total}/{total}"),
+        1.0,
+    );
 }
 
-fn run_download_cache_plan(state: &mut RuntimeState) {
+fn run_download_cache_plan(app_window: &AppWindow, state: &mut RuntimeState) {
     let manifest = match &state.manifest {
         Ok(manifest) => manifest.clone(),
         Err(error) => {
             state.push_log(format!("下载缓存失败：配置读取失败：{error}"));
+            set_task_status(app_window, state, "下载失败：配置读取失败", 0.0);
             return;
         }
     };
 
     if state.selected.is_empty() {
         state.push_log("下载缓存跳过：未选择软件");
+        set_task_status(app_window, state, "下载跳过：未选择软件", 0.0);
         return;
     }
 
     let selected = state.selected.clone();
+    let total = selected.len();
+    let cache_root = PathBuf::from(&state.cache_root);
     state.push_log(format!("检查下载缓存任务：{} 个软件", selected.len()));
-    for app in manifest
+    set_task_status(app_window, state, format!("下载准备 0/{total}"), 0.0);
+    for (index, app) in manifest
         .apps
         .iter()
         .filter(|app| selected.iter().any(|id| id == &app.id))
+        .enumerate()
     {
+        set_task_progress(app_window, state, "下载缓存", index, total, &app.name);
         match app.source.source_type.as_str() {
             "winget" | "preinstalled_or_winget" | "direct_url" | "github_release" => {
-                let result = download_cache_for_app(app, Path::new("cache"));
+                let result = download_cache_for_app(app, &cache_root);
                 match result.status {
                     DownloadStatus::Downloaded => {
                         let path = result
@@ -462,7 +529,14 @@ fn run_download_cache_plan(state: &mut RuntimeState) {
                 app.name
             )),
         }
+        set_task_progress(app_window, state, "下载缓存", index + 1, total, &app.name);
     }
+    set_task_status(
+        app_window,
+        state,
+        format!("下载缓存结束 {total}/{total}"),
+        1.0,
+    );
 }
 
 fn detection_state_label(state: &DetectionState) -> &'static str {
@@ -516,8 +590,8 @@ fn visible_row_by_index(
         .nth(index)
 }
 
-fn pick_install_root_folder(current_root: &str) -> Option<PathBuf> {
-    let dialog = rfd::FileDialog::new().set_title("选择默认安装路径");
+fn pick_folder(title: &str, current_root: &str) -> Option<PathBuf> {
+    let dialog = rfd::FileDialog::new().set_title(title);
     let current_path = Path::new(current_root);
     let dialog = if current_path.exists() {
         dialog.set_directory(current_path)
@@ -528,18 +602,109 @@ fn pick_install_root_folder(current_root: &str) -> Option<PathBuf> {
     dialog.pick_folder()
 }
 
-fn apply_install_root_selection(install_root: &mut String, selected_path: Option<PathBuf>) -> bool {
+fn apply_folder_selection(target: &mut String, selected_path: Option<PathBuf>) -> bool {
     let Some(path) = selected_path else {
         return false;
     };
 
     let path_text = path.to_string_lossy().trim().to_owned();
-    if path_text.is_empty() || *install_root == path_text {
+    if path_text.is_empty() || *target == path_text {
         return false;
     }
 
-    *install_root = path_text;
+    *target = path_text;
     true
+}
+
+fn sync_editable_paths(app: &AppWindow, state: &mut RuntimeState) {
+    let install_root = app.get_install_root().trim().to_owned();
+    if !install_root.is_empty() {
+        state.install_root = install_root;
+    }
+
+    let cache_root = app.get_cache_root().trim().to_owned();
+    if !cache_root.is_empty() {
+        state.cache_root = cache_root;
+    }
+}
+
+fn open_cache_folder(state: &mut RuntimeState) {
+    let path = PathBuf::from(&state.cache_root);
+    match std::fs::create_dir_all(&path).and_then(|_| open_path_in_file_manager(&path)) {
+        Ok(()) => state.push_log(format!("已打开下载缓存目录：{}", path.display())),
+        Err(error) => state.push_log(format!("打开下载缓存目录失败：{}：{error}", path.display())),
+    }
+}
+
+fn open_path_in_file_manager(path: &Path) -> std::io::Result<()> {
+    let status = file_manager_command(path).status()?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(std::io::Error::other(format!(
+            "文件管理器退出码：{}",
+            status
+                .code()
+                .map(|code| code.to_string())
+                .unwrap_or_else(|| "无".to_owned())
+        )))
+    }
+}
+
+fn file_manager_command(path: &Path) -> Command {
+    #[cfg(target_os = "windows")]
+    {
+        let mut command = Command::new("explorer");
+        command.arg(path);
+        command
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let mut command = Command::new("open");
+        command.arg(path);
+        command
+    }
+
+    #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+    {
+        let mut command = Command::new("xdg-open");
+        command.arg(path);
+        command
+    }
+}
+
+fn set_task_progress(
+    app: &AppWindow,
+    state: &mut RuntimeState,
+    phase: &str,
+    completed: usize,
+    total: usize,
+    item: &str,
+) {
+    let progress = if total == 0 {
+        0.0
+    } else {
+        completed as f32 / total as f32
+    };
+    set_task_status(
+        app,
+        state,
+        format!("{phase} {completed}/{total}：{item}"),
+        progress,
+    );
+}
+
+fn set_task_status(
+    app: &AppWindow,
+    state: &mut RuntimeState,
+    status: impl Into<String>,
+    progress: f32,
+) {
+    state.task_status = status.into();
+    state.task_progress = progress.clamp(0.0, 1.0);
+    app.set_task_status(state.task_status.clone().into());
+    app.set_task_progress(state.task_progress);
 }
 
 fn log_timestamp() -> String {
@@ -569,7 +734,7 @@ mod tests {
     fn install_root_updates_when_folder_is_selected() {
         let mut install_root = "C:\\Program Files\\CompanyApps".to_owned();
 
-        let changed = super::apply_install_root_selection(
+        let changed = super::apply_folder_selection(
             &mut install_root,
             Some(PathBuf::from("D:\\CompanyApps")),
         );
@@ -582,7 +747,7 @@ mod tests {
     fn install_root_is_unchanged_when_picker_is_cancelled() {
         let mut install_root = "C:\\Program Files\\CompanyApps".to_owned();
 
-        let changed = super::apply_install_root_selection(&mut install_root, None);
+        let changed = super::apply_folder_selection(&mut install_root, None);
 
         assert!(!changed);
         assert_eq!(install_root, "C:\\Program Files\\CompanyApps");
@@ -603,5 +768,18 @@ mod tests {
 
         assert_eq!(row.name, "Microsoft Edge");
         assert!(row.homepage_url.starts_with("https://"));
+    }
+
+    #[test]
+    fn cache_root_updates_when_folder_is_selected() {
+        let mut cache_root = "cache".to_owned();
+
+        let changed = super::apply_folder_selection(
+            &mut cache_root,
+            Some(PathBuf::from("E:\\InstallerCache")),
+        );
+
+        assert!(changed);
+        assert_eq!(cache_root, "E:\\InstallerCache");
     }
 }

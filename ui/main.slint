@@ -1,6 +1,7 @@
 import {
     Button,
     LineEdit,
+    ProgressIndicator,
     StandardTableView,
     TextEdit,
 } from "std-widgets.slint";
@@ -35,6 +36,9 @@ export component AppWindow inherits Window {
     height: 760px;
 
     in-out property <string> install-root;
+    in-out property <string> cache-root;
+    in property <string> task-status;
+    in property <float> task-progress;
     in property <int> selected-count;
     in property <int> admin-count;
     in property <int> verification-count;
@@ -45,6 +49,8 @@ export component AppWindow inherits Window {
     in property <string> log-text;
 
     callback choose-install-root();
+    callback choose-cache-root();
+    callback open-cache-root();
     callback open-homepage();
     callback start-install();
     callback download-cache();
@@ -196,6 +202,61 @@ export component AppWindow inherits Window {
                         width: 74px;
                         vertical-alignment: center;
                         horizontal-alignment: right;
+                    }
+                }
+
+                HorizontalLayout {
+                    height: 30px;
+                    spacing: 10px;
+
+                    Text {
+                        text: "缓存目录";
+                        font-size: 13px;
+                        color: #787774;
+                        width: 88px;
+                        vertical-alignment: center;
+                    }
+
+                    LineEdit {
+                        text <=> root.cache-root;
+                        width: 420px;
+                        height: 28px;
+                    }
+
+                    Button {
+                        text: "选择...";
+                        width: 66px;
+                        height: 28px;
+                        clicked => { root.choose-cache-root(); }
+                    }
+
+                    Button {
+                        text: "打开";
+                        width: 54px;
+                        height: 28px;
+                        clicked => { root.open-cache-root(); }
+                    }
+
+                    Rectangle { horizontal-stretch: 1; }
+                }
+
+                HorizontalLayout {
+                    height: 26px;
+                    spacing: 10px;
+
+                    Text {
+                        text: root.task-status;
+                        font-size: 12px;
+                        color: #787774;
+                        width: 240px;
+                        vertical-alignment: center;
+                    }
+
+                    ProgressIndicator {
+                        progress: root.task-progress;
+                        indeterminate: false;
+                        height: 8px;
+                        horizontal-stretch: 1;
                     }
                 }
 
