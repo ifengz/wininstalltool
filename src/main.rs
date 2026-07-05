@@ -20,6 +20,8 @@ use std::rc::Rc;
 
 slint::include_modules!();
 
+const INSTALL_LOG_PATH: &str = "logs/install.log";
+
 fn main() -> Result<(), slint::PlatformError> {
     let app = AppWindow::new()?;
     let state = Rc::new(RefCell::new(RuntimeState::load()));
@@ -39,6 +41,8 @@ struct RuntimeState {
     cache_root: String,
     task_status: String,
     task_progress: f32,
+    pending_delete_app_id: Option<String>,
+    pending_delete_app_name: Option<String>,
     logs: Vec<String>,
 }
 
@@ -70,6 +74,8 @@ impl RuntimeState {
             cache_root: "cache".to_owned(),
             task_status: "就绪".to_owned(),
             task_progress: 0.0,
+            pending_delete_app_id: None,
+            pending_delete_app_name: None,
             logs: vec!["[startup] 配置已读取，真实安装尚未启用".to_owned()],
         }
     }
@@ -231,13 +237,74 @@ fn wire_callbacks(app: &AppWindow, state: Rc<RefCell<RuntimeState>>) {
 
     let weak = app.as_weak();
     let delete_app_state = Rc::clone(&state);
-    app.on_delete_current_app(move || {
+    app.on_request_delete_current_app(move || {
         let Some(app) = weak.upgrade() else {
             return;
         };
 
         let mut state = delete_app_state.borrow_mut();
-        delete_current_app(&mut state, app.get_current_row());
+        request_delete_current_app(&mut state, app.get_current_row());
+        refresh_window(&app, &state);
+    });
+
+    let weak = app.as_weak();
+    let confirm_delete_state = Rc::clone(&state);
+    app.on_confirm_delete_current_app(move || {
+        let Some(app) = weak.upgrade() else {
+            return;
+        };
+
+        let mut state = confirm_delete_state.borrow_mut();
+        confirm_delete_current_app(&mut state);
+        refresh_window(&app, &state);
+    });
+
+    let weak = app.as_weak();
+    let cancel_delete_state = Rc::clone(&state);
+    app.on_cancel_delete_current_app(move || {
+        let Some(app) = weak.upgrade() else {
+            return;
+        };
+
+        let mut state = cancel_delete_state.borrow_mut();
+        clear_pending_delete(&mut state);
+        state.push_log("已取消删除软件");
+        refresh_window(&app, &state);
+    });
+
+    let weak = app.as_weak();
+    let open_log_state = Rc::clone(&state);
+    app.on_open_log(move || {
+        let Some(app) = weak.upgrade() else {
+            return;
+        };
+
+        let mut state = open_log_state.borrow_mut();
+        open_log_file(&mut state);
+        refresh_window(&app, &state);
+    });
+
+    let weak = app.as_weak();
+    let clear_log_state = Rc::clone(&state);
+    app.on_clear_log(move || {
+        let Some(app) = weak.upgrade() else {
+            return;
+        };
+
+        let mut state = clear_log_state.borrow_mut();
+        clear_logs(&mut state);
+        refresh_window(&app, &state);
+    });
+
+    let weak = app.as_weak();
+    let export_log_state = Rc::clone(&state);
+    app.on_export_log(move || {
+        let Some(app) = weak.upgrade() else {
+            return;
+        };
+
+        let mut state = export_log_state.borrow_mut();
+        export_logs(&mut state);
         refresh_window(&app, &state);
     });
 
@@ -279,6 +346,15 @@ fn refresh_window(app: &AppWindow, state: &RuntimeState) {
     app.set_task_progress(state.task_progress);
     app.set_table_columns(table_columns());
     app.set_log_text(state.logs.join("\n").into());
+    app.set_delete_confirm_visible(state.pending_delete_app_id.is_some());
+    app.set_delete_confirm_text(
+        state
+            .pending_delete_app_name
+            .as_ref()
+            .map(|name| format!("确认从配置删除：{name}？此操作会写回软件清单。"))
+            .unwrap_or_default()
+            .into(),
+    );
     app.set_current_row(state.current_row);
 
     match &state.manifest {
@@ -555,6 +631,40 @@ fn run_detection(state: &mut RuntimeState) {
     }
 }
 
+fn open_log_file(state: &mut RuntimeState) {
+    ensure_log_file_exists();
+    match open_path_in_file_manager(Path::new(INSTALL_LOG_PATH)) {
+        Ok(()) => state.push_log(format!("已打开日志文件：{INSTALL_LOG_PATH}")),
+        Err(error) => state.push_log(format!("打开日志文件失败：{INSTALL_LOG_PATH}：{error}")),
+    }
+}
+
+fn clear_logs(state: &mut RuntimeState) {
+    state.logs.clear();
+    if let Err(error) = reset_log_file() {
+        state
+            .logs
+            .push(format!("[{}] 清空日志失败：{}", log_timestamp(), error));
+        return;
+    }
+    state.push_log("日志已清空");
+}
+
+fn export_logs(state: &mut RuntimeState) {
+    let export_path = PathBuf::from("logs").join(format!(
+        "install-{}-{}.log",
+        sanitized_machine_name(),
+        log_timestamp()
+    ));
+
+    match std::fs::create_dir_all("logs")
+        .and_then(|_| std::fs::write(&export_path, format!("{}\n", state.logs.join("\n"))))
+    {
+        Ok(()) => state.push_log(format!("已导出日志：{}", export_path.display())),
+        Err(error) => state.push_log(format!("导出日志失败：{error}")),
+    }
+}
+
 fn run_selected_install(app_window: &AppWindow, state: &mut RuntimeState) {
     let manifest = match &state.manifest {
         Ok(manifest) => manifest.clone(),
@@ -640,6 +750,13 @@ fn run_selected_install(app_window: &AppWindow, state: &mut RuntimeState) {
                 result.stdout.trim()
             ));
         }
+        let report = detect_app(app);
+        state.push_log(format!(
+            "{} 安装后验证：{}（{}）",
+            report.app_name,
+            detection_state_label(&report.state),
+            report.details
+        ));
         set_task_progress(app_window, state, "安装中", index + 1, total, &app.name);
     }
     set_task_status(
@@ -752,19 +869,45 @@ fn open_homepage_for_current_row(state: &mut RuntimeState, current_row: i32) {
     }
 }
 
-fn delete_current_app(state: &mut RuntimeState, current_row: i32) -> bool {
+fn request_delete_current_app(state: &mut RuntimeState, current_row: i32) -> bool {
     let manifest = match &state.manifest {
         Ok(manifest) => manifest,
         Err(_) => {
+            state.push_log("请求删除失败：配置未正确读取");
+            return false;
+        }
+    };
+
+    let Some(app) = visible_app_by_index(manifest, state.active_category.as_deref(), current_row)
+    else {
+        state.push_log("请求删除失败：未选择有效软件行");
+        return false;
+    };
+
+    state.pending_delete_app_id = Some(app.id.clone());
+    state.pending_delete_app_name = Some(app.name.clone());
+    state.push_log(format!("等待确认删除软件：{}", app.name));
+    true
+}
+
+fn confirm_delete_current_app(state: &mut RuntimeState) -> bool {
+    let Some(app_id) = state.pending_delete_app_id.clone() else {
+        state.push_log("删除软件失败：没有待确认的软件");
+        return false;
+    };
+
+    let manifest = match &state.manifest {
+        Ok(manifest) => manifest,
+        Err(_) => {
+            clear_pending_delete(state);
             state.push_log("删除软件失败：配置未正确读取");
             return false;
         }
     };
 
-    let Some((next_manifest, removed)) =
-        manifest_without_visible_app(manifest, state.active_category.as_deref(), current_row)
-    else {
-        state.push_log("删除软件失败：未选择有效软件行");
+    let Some((next_manifest, removed)) = manifest_without_app_id(manifest, &app_id) else {
+        clear_pending_delete(state);
+        state.push_log("删除软件失败：软件不存在");
         return false;
     };
 
@@ -773,22 +916,37 @@ fn delete_current_app(state: &mut RuntimeState, current_row: i32) -> bool {
             state.selected.retain(|id| id != &removed.id);
             state.current_row = -1;
             state.manifest = Ok(next_manifest);
+            clear_pending_delete(state);
             state.push_log(format!("已从配置删除软件：{}", removed.name));
             true
         }
         Err(error) => {
+            clear_pending_delete(state);
             state.push_log(format!("删除软件失败：写入配置失败：{error}"));
             false
         }
     }
 }
 
+fn clear_pending_delete(state: &mut RuntimeState) {
+    state.pending_delete_app_id = None;
+    state.pending_delete_app_name = None;
+}
+
+#[cfg(test)]
 fn manifest_without_visible_app(
     manifest: &AppManifest,
     active_category: Option<&str>,
     current_row: i32,
 ) -> Option<(AppManifest, crate::config::AppEntry)> {
     let app_id = visible_app_id_by_index(manifest, active_category, current_row)?;
+    manifest_without_app_id(manifest, &app_id)
+}
+
+fn manifest_without_app_id(
+    manifest: &AppManifest,
+    app_id: &str,
+) -> Option<(AppManifest, crate::config::AppEntry)> {
     let mut next_manifest = manifest.clone();
     let position = next_manifest.apps.iter().position(|app| app.id == app_id)?;
     let removed = next_manifest.apps.remove(position);
@@ -822,13 +980,20 @@ fn visible_app_id_by_index(
     active_category: Option<&str>,
     index: i32,
 ) -> Option<String> {
+    visible_app_by_index(manifest, active_category, index).map(|app| app.id.clone())
+}
+
+fn visible_app_by_index<'a>(
+    manifest: &'a AppManifest,
+    active_category: Option<&str>,
+    index: i32,
+) -> Option<&'a AppEntry> {
     let index = usize::try_from(index).ok()?;
     manifest
         .apps
         .iter()
         .filter(|app| active_category.is_none_or(|category| app.category == category))
         .nth(index)
-        .map(|app| app.id.clone())
 }
 
 fn visible_row_by_index(
@@ -975,9 +1140,44 @@ fn append_log_line(line: &str) {
     if let Ok(mut file) = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
-        .open("logs/install.log")
+        .open(INSTALL_LOG_PATH)
     {
         let _ = writeln!(file, "{line}");
+    }
+}
+
+fn ensure_log_file_exists() {
+    let _ = std::fs::create_dir_all("logs");
+    let _ = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(INSTALL_LOG_PATH);
+}
+
+fn reset_log_file() -> std::io::Result<()> {
+    std::fs::create_dir_all("logs")?;
+    std::fs::write(INSTALL_LOG_PATH, "")
+}
+
+fn sanitized_machine_name() -> String {
+    let name = std::env::var("COMPUTERNAME")
+        .or_else(|_| std::env::var("HOSTNAME"))
+        .unwrap_or_else(|_| "unknown-machine".to_owned());
+    let sanitized = name
+        .chars()
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() || ch == '-' || ch == '_' {
+                ch
+            } else {
+                '-'
+            }
+        })
+        .collect::<String>();
+
+    if sanitized.trim_matches('-').is_empty() {
+        "unknown-machine".to_owned()
+    } else {
+        sanitized
     }
 }
 
@@ -1049,6 +1249,8 @@ mod tests {
             cache_root: "cache".to_owned(),
             task_status: "就绪".to_owned(),
             task_progress: 0.0,
+            pending_delete_app_id: None,
+            pending_delete_app_name: None,
             logs: Vec::new(),
         };
 
@@ -1074,6 +1276,45 @@ mod tests {
         assert_eq!(next_manifest.apps.len(), manifest.apps.len() - 1);
         assert!(!next_manifest.apps.iter().any(|app| app.id == "edge"));
         assert!(next_manifest.apps.iter().any(|app| app.id == "chrome"));
+    }
+
+    #[test]
+    fn delete_request_sets_pending_app_without_removing_it() {
+        let manifest =
+            crate::config::AppManifest::load_from_default_path().expect("apps example should load");
+        let original_len = manifest.apps.len();
+        let mut state = super::RuntimeState {
+            manifest: Ok(manifest),
+            selected: vec!["edge".to_owned()],
+            active_category: Some("browser".to_owned()),
+            current_row: 1,
+            install_root: "D:\\Apps".to_owned(),
+            cache_root: "cache".to_owned(),
+            task_status: "就绪".to_owned(),
+            task_progress: 0.0,
+            pending_delete_app_id: None,
+            pending_delete_app_name: None,
+            logs: Vec::new(),
+        };
+
+        let requested = super::request_delete_current_app(&mut state, 1);
+
+        assert!(requested);
+        assert_eq!(state.pending_delete_app_id.as_deref(), Some("edge"));
+        assert_eq!(state.manifest.as_ref().unwrap().apps.len(), original_len);
+    }
+
+    #[test]
+    fn manifest_remove_by_id_removes_exact_app() {
+        let manifest =
+            crate::config::AppManifest::load_from_default_path().expect("apps example should load");
+
+        let (next_manifest, removed) =
+            super::manifest_without_app_id(&manifest, "edge").expect("edge should exist");
+
+        assert_eq!(removed.id, "edge");
+        assert_eq!(next_manifest.apps.len(), manifest.apps.len() - 1);
+        assert!(!next_manifest.apps.iter().any(|app| app.id == "edge"));
     }
 
     #[test]

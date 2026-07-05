@@ -19,12 +19,14 @@ pub struct AppEntry {
     pub id: String,
     pub name: String,
     pub category: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub homepage_url: Option<String>,
     pub enabled_by_default: bool,
     pub verification_status: String,
     pub source: PackageSource,
     pub install: InstallSpec,
     pub detect: DetectSpec,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub notes: Option<String>,
 }
 
@@ -32,9 +34,13 @@ pub struct AppEntry {
 pub struct PackageSource {
     #[serde(rename = "type")]
     pub source_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub package_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub repo: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub asset_pattern: Option<String>,
 }
 
@@ -54,10 +60,15 @@ pub struct InstallSpec {
     pub method: String,
     pub requires_admin: bool,
     pub supports_custom_path: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub args: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub silent_args: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub direct_silent_args: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub direct_install_location_arg: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub fallback_notes: Option<String>,
 }
 
@@ -139,5 +150,16 @@ mod tests {
         assert_eq!(manifest.schema_version, 1);
         assert!(manifest.apps.iter().any(|app| app.id == "chrome"));
         assert!(manifest.apps.iter().any(|app| app.id == "notepadpp"));
+    }
+
+    #[test]
+    fn serializing_manifest_skips_absent_optional_fields() {
+        let manifest = AppManifest::load_from_default_path().expect("apps example should load");
+
+        let data = serde_json::to_string_pretty(&manifest).expect("manifest should serialize");
+
+        assert!(!data.contains(r#""url": null"#));
+        assert!(!data.contains(r#""silent_args": null"#));
+        assert!(!data.contains(r#""notes": null"#));
     }
 }
