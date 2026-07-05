@@ -172,6 +172,33 @@ pub fn download_cache_for_app(app: &AppEntry, cache_root: &Path) -> DownloadResu
     }
 }
 
+pub fn ensure_cached_installer_for_install(app: &AppEntry, cache_root: &Path) -> DownloadResult {
+    let extensions = match app.install.method.as_str() {
+        "msi" => &["msi"][..],
+        "direct_exe" => &["exe"][..],
+        _ => {
+            return DownloadResult {
+                app_id: app.id.clone(),
+                app_name: app.name.clone(),
+                status: DownloadStatus::Skipped,
+                message: "install method does not require local cache".to_owned(),
+                path: None,
+            };
+        }
+    };
+
+    match find_cached_installer(&app.id, cache_root, extensions) {
+        Ok(path) => DownloadResult {
+            app_id: app.id.clone(),
+            app_name: app.name.clone(),
+            status: DownloadStatus::Skipped,
+            message: format!("cached installer already exists: {}", path.display()),
+            path: Some(path),
+        },
+        Err(_) => download_cache_for_app(app, cache_root),
+    }
+}
+
 impl InstallCommand {
     pub fn render(&self) -> String {
         std::iter::once(self.program.as_str())
@@ -653,9 +680,9 @@ fn evaluate_registry_rule(_rule: &DetectRule) -> RuleEvaluation {
 #[cfg(test)]
 mod tests {
     use super::{
-        DetectionState, GithubRelease, GithubReleaseAsset, build_install_command, build_plan,
-        detect_app, installer_file_name_from_url, select_github_release_asset,
-        validate_manifest_for_install,
+        DetectionState, DownloadStatus, GithubRelease, GithubReleaseAsset, build_install_command,
+        build_plan, detect_app, ensure_cached_installer_for_install, installer_file_name_from_url,
+        select_github_release_asset, validate_manifest_for_install,
     };
     use crate::config::{
         AppEntry, AppManifest, DetectRule, DetectSpec, InstallSpec, PackageSource,
@@ -773,6 +800,56 @@ mod tests {
             installer_file_name_from_url("https://example.com/download"),
             None
         );
+    }
+
+    #[test]
+    fn install_cache_is_skipped_for_winget_apps() {
+        let manifest = AppManifest::load_from_default_path().expect("apps example should load");
+        let feishu = manifest
+            .apps
+            .iter()
+            .find(|app| app.id == "feishu")
+            .expect("feishu should exist");
+
+        let result = ensure_cached_installer_for_install(feishu, std::env::temp_dir().as_path());
+
+        assert_eq!(result.status, DownloadStatus::Skipped);
+        assert!(result.message.contains("does not require local cache"));
+        assert_eq!(
+            feishu.source.package_id.as_deref(),
+            Some("ByteDance.Feishu")
+        );
+    }
+
+    #[test]
+    fn install_cache_rejects_direct_download_pages() {
+        let mut app = test_app_with_rules(Vec::new());
+        app.source.url = Some("https://example.com/download".to_owned());
+
+        let result = ensure_cached_installer_for_install(&app, std::env::temp_dir().as_path());
+
+        assert_eq!(result.status, DownloadStatus::Failed);
+        assert!(result.message.contains("not a direct installer file"));
+    }
+
+    #[test]
+    fn install_cache_reuses_existing_direct_installer() {
+        let cache_root = std::env::temp_dir().join(format!(
+            "wininstalltool-cache-reuse-test-{}",
+            std::process::id()
+        ));
+        let app_cache = cache_root.join("example");
+        std::fs::create_dir_all(&app_cache).expect("cache dir should be writable");
+        let installer = app_cache.join("example.exe");
+        std::fs::write(&installer, "fake exe").expect("installer marker should be writable");
+        let app = test_app_with_rules(Vec::new());
+
+        let result = ensure_cached_installer_for_install(&app, &cache_root);
+
+        let _ = std::fs::remove_dir_all(cache_root);
+        assert_eq!(result.status, DownloadStatus::Skipped);
+        assert_eq!(result.path.as_deref(), Some(installer.as_path()));
+        assert!(result.message.contains("already exists"));
     }
 
     #[test]

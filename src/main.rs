@@ -10,7 +10,8 @@ use crate::config::{
 };
 use crate::engine::{
     DetectionState, DownloadStatus, build_install_command, detect_app, detect_selected_apps,
-    download_cache_for_app, run_install_command, validate_manifest_for_install,
+    download_cache_for_app, ensure_cached_installer_for_install, run_install_command,
+    validate_manifest_for_install,
 };
 use crate::ui_model::{CategoryView, InstallerViewModel, build_view_model};
 use slint::{ModelRc, SharedString, StandardListViewItem, TableColumn, VecModel};
@@ -1024,6 +1025,32 @@ fn run_selected_install(app_window: &AppWindow, state: &mut RuntimeState) {
             state.push_log(format!("跳过已安装：{}", app.name));
             set_task_progress(app_window, state, "安装中", index + 1, total, &app.name);
             continue;
+        }
+
+        let cache_result = ensure_cached_installer_for_install(app, &cache_root);
+        match cache_result.status {
+            DownloadStatus::Downloaded => {
+                let path = cache_result
+                    .path
+                    .as_ref()
+                    .map(|path| path.display().to_string())
+                    .unwrap_or_else(|| cache_result.message.clone());
+                state.push_log(format!("{} 安装前缓存完成：{path}", cache_result.app_name));
+            }
+            DownloadStatus::Skipped => {
+                state.push_log(format!(
+                    "{} 安装前缓存跳过：{}",
+                    cache_result.app_name, cache_result.message
+                ));
+            }
+            DownloadStatus::Failed => {
+                state.push_log(format!(
+                    "{} 安装失败：下载缓存失败：{}",
+                    cache_result.app_name, cache_result.message
+                ));
+                set_task_progress(app_window, state, "安装中", index + 1, total, &app.name);
+                continue;
+            }
         }
 
         let command = match build_install_command(app, &state.install_root, &cache_root) {

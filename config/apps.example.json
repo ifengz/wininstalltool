@@ -149,17 +149,25 @@
       "enabled_by_default": true,
       "verification_status": "candidate_high",
       "source": {
-        "type": "direct_url",
-        "url": "https://www.feishu.cn/download"
+        "type": "winget",
+        "package_id": "ByteDance.Feishu"
       },
       "install": {
-        "method": "direct_exe",
+        "method": "winget",
         "requires_admin": false,
         "supports_custom_path": false,
-        "silent_args": [
-          "--command=quiet_install"
+        "args": [
+          "install",
+          "--exact",
+          "--id",
+          "ByteDance.Feishu",
+          "--silent",
+          "--accept-package-agreements",
+          "--accept-source-agreements",
+          "--disable-interactivity",
+          "--no-upgrade"
         ],
-        "fallback_notes": "Feishu also documents MSI deployment; use MSI if company deployment package is available."
+        "fallback_notes": "Official Feishu EXE can use --command=quiet_install when a verified direct installer is cached manually."
       },
       "detect": {
         "type": "any",
