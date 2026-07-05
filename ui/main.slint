@@ -121,7 +121,8 @@ export component AppWindow inherits Window {
                 TextEdit {
                     text: root.log-text;
                     read-only: true;
-                    height: 160px;
+                    min-height: 160px;
+                    vertical-stretch: 1;
                 }
             }
         }
